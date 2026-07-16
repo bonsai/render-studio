@@ -1,0 +1,21 @@
+{
+  "name": "render-studio",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Unified rendering pipeline tool with TUI config and WebGL shaders",
+  "main": "src/tui/cli.js",
+  "bin": {
+    "render-studio": "./src/tui/cli.js"
+  },
+  "scripts": {
+    "tui": "node src/tui/cli.js",
+    "dev": "npx serve public",
+    "build": "cp -r src/shaders public/shaders"
+  },
+  "keywords": ["tui", "glsl", "webgl", "rendering", "shader", "raytracing"],
+  "license": "ISC",
+  "dependencies": {
+    "chalk": "^5.6.2",
+    "boxen": "^8.0.1"
+  }
+}

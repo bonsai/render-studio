@@ -1,0 +1,121 @@
+{
+  "checker": {
+    "name": "Checker",
+    "category": "pattern",
+    "description": "Checkered pattern using floor()",
+    "vertex": "#version 300 es\nin vec2 a_position;\nout vec2 v_uv;\nvoid main() {\n  v_uv = a_position * 0.5 + 0.5;\n  gl_Position = vec4(a_position, 0.0, 1.0);\n}",
+    "fragment": "#version 300 es\nprecision mediump float;\nuniform float u_time;\nuniform vec2 u_resolution;\nin vec2 v_uv;\nout vec4 fragColor;\n\nvoid main() {\n  vec2 st = v_uv * 8.0;\n  float checker = mod(floor(st.x) + floor(st.y), 2.0);\n  fragColor = vec4(vec3(checker), 1.0);\n}"
+  },
+  "circles": {
+    "name": "Circles",
+    "category": "pattern",
+    "description": "Concentric circles with distance falloff",
+    "vertex": "#version 300 es\nin vec2 a_position;\nout vec2 v_uv;\nvoid main() {\n  v_uv = a_position * 0.5 + 0.5;\n  gl_Position = vec4(a_position, 0.0, 1.0);\n}",
+    "fragment": "#version 300 es\nprecision mediump float;\nuniform float u_time;\nuniform vec2 u_resolution;\nin vec2 v_uv;\nout vec4 fragColor;\n\nvoid main() {\n  vec2 p = (gl_FragCoord.xy * 2.0 - u_resolution) / min(u_resolution.x, u_resolution.y);\n  float d = length(p);\n  float circle = 0.02 / abs(d - 0.5);\n  float circle2 = 0.01 / abs(d - 0.3);\n  vec3 col = vec3(circle) * vec3(0.3, 0.6, 1.0) + vec3(circle2) * vec3(1.0, 0.4, 0.2);\n  fragColor = vec4(col, 1.0);\n}"
+  },
+  "grid": {
+    "name": "Grid",
+    "category": "pattern",
+    "description": "Animated grid lines",
+    "vertex": "#version 300 es\nin vec2 a_position;\nout vec2 v_uv;\nvoid main() {\n  v_uv = a_position * 0.5 + 0.5;\n  gl_Position = vec4(a_position, 0.0, 1.0);\n}",
+    "fragment": "#version 300 es\nprecision mediump float;\nuniform float u_time;\nuniform vec2 u_resolution;\nin vec2 v_uv;\nout vec4 fragColor;\n\nvoid main() {\n  vec2 p = (gl_FragCoord.xy * 2.0 - u_resolution) / min(u_resolution.x, u_resolution.y);\n  vec2 grid = abs(fract(p * 4.0) - 0.5);\n  float line = min(grid.x, grid.y);\n  float mask = 1.0 - smoothstep(0.0, 0.03, line);\n  vec3 col = mask * vec3(0.2, 0.8, 0.4);\n  fragColor = vec4(col * 0.8, 1.0);\n}"
+  },
+  "diamond": {
+    "name": "Diamond Tiles",
+    "category": "pattern",
+    "description": "Diamond tile pattern",
+    "vertex": "#version 300 es\nin vec2 a_position;\nout vec2 v_uv;\nvoid main() {\n  v_uv = a_position * 0.5 + 0.5;\n  gl_Position = vec4(a_position, 0.0, 1.0);\n}",
+    "fragment": "#version 300 es\nprecision mediump float;\nuniform float u_time;\nuniform vec2 u_resolution;\nin vec2 v_uv;\nout vec4 fragColor;\n\nvoid main() {\n  vec2 st = v_uv * 10.0;\n  st.y += mod(floor(st.x), 2.0) * 0.5;\n  vec2 f = fract(st) - 0.5;\n  float d = abs(f.x) + abs(f.y);\n  float diamond = 1.0 - smoothstep(0.3, 0.35, d);\n  float border = smoothstep(0.28, 0.3, d) * (1.0 - smoothstep(0.35, 0.37, d));\n  vec3 col = diamond * vec3(0.9, 0.3, 0.5) + border * vec3(1.0);\n  fragColor = vec4(col, 1.0);\n}"
+  },
+  "valueNoise": {
+    "name": "Value Noise",
+    "category": "noise",
+    "description": "Value noise with smooth interpolation",
+    "vertex": "#version 300 es\nin vec2 a_position;\nout vec2 v_uv;\nvoid main() {\n  v_uv = a_position * 0.5 + 0.5;\n  gl_Position = vec4(a_position, 0.0, 1.0);\n}",
+    "fragment": "#version 300 es\nprecision mediump float;\nuniform float u_time;\nuniform vec2 u_resolution;\nin vec2 v_uv;\nout vec4 fragColor;\n\nfloat random(vec2 st) {\n  return fract(sin(dot(st, vec2(12.9898, 78.233))) * 43758.5453);\n}\n\nfloat valueNoise(vec2 st) {\n  vec2 i = floor(st);\n  vec2 f = fract(st);\n  float a = random(i);\n  float b = random(i + vec2(1.0, 0.0));\n  float c = random(i + vec2(0.0, 1.0));\n  float d = random(i + vec2(1.0, 1.0));\n  vec2 u = f * f * (3.0 - 2.0 * f);\n  return mix(a, b, u.x) + (c - a) * u.y * (1.0 - u.x) + (d - b) * u.x * u.y;\n}\n\nvoid main() {\n  vec2 st = v_uv * 8.0;\n  float n = valueNoise(st);\n  fragColor = vec4(vec3(n), 1.0);\n}"
+  },
+  "gradientNoise": {
+    "name": "Gradient Noise",
+    "category": "noise",
+    "description": "Perlin-style gradient noise",
+    "vertex": "#version 300 es\nin vec2 a_position;\nout vec2 v_uv;\nvoid main() {\n  v_uv = a_position * 0.5 + 0.5;\n  gl_Position = vec4(a_position, 0.0, 1.0);\n}",
+    "fragment": "#version 300 es\nprecision mediump float;\nuniform float u_time;\nuniform vec2 u_resolution;\nin vec2 v_uv;\nout vec4 fragColor;\n\nvec2 random2(vec2 st) {\n  st = vec2(dot(st, vec2(127.1, 311.7)), dot(st, vec2(269.5, 183.3)));\n  return -1.0 + 2.0 * fract(sin(st) * 43758.5453123);\n}\n\nfloat gradientNoise(vec2 st) {\n  vec2 i = floor(st);\n  vec2 f = fract(st);\n  vec2 u = f * f * (3.0 - 2.0 * f);\n  return mix(mix(dot(random2(i + vec2(0,0)), f - vec2(0,0)),\n                 dot(random2(i + vec2(1,0)), f - vec2(1,0)), u.x),\n             mix(dot(random2(i + vec2(0,1)), f - vec2(0,1)),\n                 dot(random2(i + vec2(1,1)), f - vec2(1,1)), u.x), u.y) * 0.5 + 0.5;\n}\n\nvoid main() {\n  vec2 st = v_uv * 6.0;\n  float n = gradientNoise(st);\n  fragColor = vec4(vec3(n), 1.0);\n}"
+  },
+  "fbm": {
+    "name": "FBM (Fractal)",
+    "category": "noise",
+    "description": "Fractal Brownian Motion (layered noise)",
+    "vertex": "#version 300 es\nin vec2 a_position;\nout vec2 v_uv;\nvoid main() {\n  v_uv = a_position * 0.5 + 0.5;\n  gl_Position = vec4(a_position, 0.0, 1.0);\n}",
+    "fragment": "#version 300 es\nprecision mediump float;\nuniform float u_time;\nuniform vec2 u_resolution;\nin vec2 v_uv;\nout vec4 fragColor;\n\nfloat hash(vec2 p) {\n  return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);\n}\n\nfloat noise(vec2 p) {\n  vec2 i = floor(p);\n  vec2 f = fract(p);\n  f = f * f * (3.0 - 2.0 * f);\n  return mix(mix(hash(i), hash(i + vec2(1,0)), f.x),\n             mix(hash(i + vec2(0,1)), hash(i + vec2(1,1)), f.x), f.y);\n}\n\nfloat fbm(vec2 p) {\n  float v = 0.0, a = 0.5;\n  mat2 rot = mat2(cos(0.5), sin(0.5), -sin(0.5), cos(0.5));\n  for (int i = 0; i < 6; i++) {\n    v += a * noise(p);\n    p = rot * p * 2.0;\n    a *= 0.5;\n  }\n  return v;\n}\n\nvoid main() {\n  vec2 st = v_uv * 4.0;\n  st += u_time * 0.1;\n  float n = fbm(st);\n  vec3 col = mix(vec3(0.1, 0.2, 0.5), vec3(0.8, 0.3, 0.1), n);\n  fragColor = vec4(col, 1.0);\n}"
+  },
+  "voronoi": {
+    "name": "Voronoi",
+    "category": "noise",
+    "description": "Voronoi (Worley) noise cells",
+    "vertex": "#version 300 es\nin vec2 a_position;\nout vec2 v_uv;\nvoid main() {\n  v_uv = a_position * 0.5 + 0.5;\n  gl_Position = vec4(a_position, 0.0, 1.0);\n}",
+    "fragment": "#version 300 es\nprecision mediump float;\nuniform float u_time;\nuniform vec2 u_resolution;\nin vec2 v_uv;\nout vec4 fragColor;\n\nvec2 random2(vec2 p) {\n  return fract(sin(vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)))) * 43758.5453);\n}\n\nvoid main() {\n  vec2 st = v_uv * 6.0;\n  vec2 i_st = floor(st);\n  vec2 f_st = fract(st);\n  float min_dist = 10.0;\n  for (int y = -1; y <= 1; y++) {\n    for (int x = -1; x <= 1; x++) {\n      vec2 neighbor = vec2(float(x), float(y));\n      vec2 point = random2(i_st + neighbor);\n      point = 0.5 + 0.5 * sin(u_time + 6.2831 * point);\n      float d = length(neighbor + point - f_st);\n      min_dist = min(min_dist, d);\n    }\n  }\n  vec3 col = vec3(min_dist) * vec3(0.3, 0.7, 1.0);\n  fragColor = vec4(col, 1.0);\n}"
+  },
+  "sdfCircle": {
+    "name": "SDF Circle",
+    "category": "sdf",
+    "description": "Signed Distance Function - Circle",
+    "vertex": "#version 300 es\nin vec2 a_position;\nout vec2 v_uv;\nvoid main() {\n  v_uv = a_position * 0.5 + 0.5;\n  gl_Position = vec4(a_position, 0.0, 1.0);\n}",
+    "fragment": "#version 300 es\nprecision mediump float;\nuniform float u_time;\nuniform vec2 u_resolution;\nin vec2 v_uv;\nout vec4 fragColor;\n\nvoid main() {\n  vec2 p = (gl_FragCoord.xy * 2.0 - u_resolution) / min(u_resolution.x, u_resolution.y);\n  float d = length(p) - 0.5;\n  float fill = 1.0 - smoothstep(-0.01, 0.01, d);\n  float outline = 1.0 - smoothstep(0.0, 0.02, abs(d));\n  vec3 col = fill * vec3(0.2, 0.5, 1.0) + outline * vec3(1.0);\n  fragColor = vec4(col, 1.0);\n}"
+  },
+  "sdfBox": {
+    "name": "SDF Box",
+    "category": "sdf",
+    "description": "Signed Distance Function - Rounded Box",
+    "vertex": "#version 300 es\nin vec2 a_position;\nout vec2 v_uv;\nvoid main() {\n  v_uv = a_position * 0.5 + 0.5;\n  gl_Position = vec4(a_position, 0.0, 1.0);\n}",
+    "fragment": "#version 300 es\nprecision mediump float;\nuniform float u_time;\nuniform vec2 u_resolution;\nin vec2 v_uv;\nout vec4 fragColor;\n\nfloat sdRoundedBox(vec2 p, vec2 b, float r) {\n  vec2 q = abs(p) - b + vec2(r);\n  return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r;\n}\n\nvoid main() {\n  vec2 p = (gl_FragCoord.xy * 2.0 - u_resolution) / min(u_resolution.x, u_resolution.y);\n  float d = sdRoundedBox(p, vec2(0.4), 0.08);\n  float fill = 1.0 - smoothstep(-0.01, 0.01, d);\n  float outline = 1.0 - smoothstep(0.0, 0.02, abs(d));\n  vec3 col = fill * vec3(0.1, 0.8, 0.4) + outline * vec3(1.0);\n  fragColor = vec4(col, 1.0);\n}"
+  },
+  "sdfBlend": {
+    "name": "SDF Blend",
+    "category": "sdf",
+    "description": "SDF Smooth Minimum (blend two shapes)",
+    "vertex": "#version 300 es\nin vec2 a_position;\nout vec2 v_uv;\nvoid main() {\n  v_uv = a_position * 0.5 + 0.5;\n  gl_Position = vec4(a_position, 0.0, 1.0);\n}",
+    "fragment": "#version 300 es\nprecision mediump float;\nuniform float u_time;\nuniform vec2 u_resolution;\nin vec2 v_uv;\nout vec4 fragColor;\n\nfloat sdCircle(vec2 p, float r) { return length(p) - r; }\n\nfloat smin(float a, float b, float k) {\n  float h = clamp(0.5 + 0.5 * (b - a) / k, 0.0, 1.0);\n  return mix(b, a, h) - k * h * (1.0 - h);\n}\n\nvoid main() {\n  vec2 p = (gl_FragCoord.xy * 2.0 - u_resolution) / min(u_resolution.x, u_resolution.y);\n  float t = u_time * 0.5;\n  vec2 off1 = vec2(sin(t) * 0.3, 0.0);\n  vec2 off2 = vec2(-sin(t) * 0.3, 0.0);\n  float d = smin(sdCircle(p - off1, 0.25), sdCircle(p - off2, 0.25), 0.15);\n  float fill = 1.0 - smoothstep(-0.01, 0.01, d);\n  float outline = 1.0 - smoothstep(0.0, 0.02, abs(d));\n  vec3 col = fill * vec3(0.8, 0.2, 0.6) + outline * vec3(1.0);\n  fragColor = vec4(col, 1.0);\n}"
+  },
+  "basicRT": {
+    "name": "Basic Ray Tracing",
+    "category": "raytracing",
+    "description": "Basic ray tracing with sphere intersection",
+    "vertex": "#version 300 es\nin vec2 a_position;\nout vec2 v_uv;\nvoid main() {\n  v_uv = a_position * 0.5 + 0.5;\n  gl_Position = vec4(a_position, 0.0, 1.0);\n}",
+    "fragment": "#version 300 es\nprecision highp float;\nuniform float u_time;\nuniform vec2 u_resolution;\nin vec2 v_uv;\nout vec4 fragColor;\n\n#define MAX_DIST 100.0\n#define SURF_DIST 0.001\n\nstruct Material {\n  vec3 albedo;\n  float roughness;\n};\n\nstruct Hit {\n  float t;\n  vec3 position;\n  vec3 normal;\n  Material material;\n};\n\nfloat sdSphere(vec3 p, float r) { return length(p) - r; }\nfloat sdPlane(vec3 p, float h) { return p.y - h; }\n\nHit miss() {\n  Hit h;\n  h.t = MAX_DIST;\n  return h;\n}\n\nHit intersectSphere(vec3 ro, vec3 rd, vec3 center, float radius, Material mat) {\n  vec3 oc = ro - center;\n  float b = dot(oc, rd);\n  float c = dot(oc, oc) - radius * radius;\n  float h = b * b - c;\n  if (h < 0.0) return miss();\n  h = -b - sqrt(h);\n  Hit hit;\n  hit.t = h;\n  hit.position = ro + rd * h;\n  hit.normal = normalize(hit.position - center);\n  hit.material = mat;\n  return hit;\n}\n\nHit trace(vec3 ro, vec3 rd) {\n  Hit closest = miss();\n  \n  Material floorMat;\n  floorMat.albedo = vec3(0.8);\n  floorMat.roughness = 0.9;\n  \n  Material sphere1Mat;\n  sphere1Mat.albedo = vec3(0.8, 0.2, 0.2);\n  sphere1Mat.roughness = 0.3;\n  \n  Material sphere2Mat;\n  sphere2Mat.albedo = vec3(0.2, 0.2, 0.8);\n  sphere2Mat.roughness = 0.1;\n  \n  float floorT = sdPlane(ro + vec3(0.0, 1.0, 0.0), 0.0);\n  if (floorT > 0.0 && floorT < closest.t) {\n    closest.t = floorT;\n    closest.position = ro + rd * floorT;\n    closest.normal = vec3(0.0, 1.0, 0.0);\n    closest.material = floorMat;\n  }\n  \n  Hit s1 = intersectSphere(ro, rd, vec3(-1.0, 0.0, 0.0), 1.0, sphere1Mat);\n  if (s1.t < closest.t) closest = s1;\n  \n  Hit s2 = intersectSphere(ro, rd, vec3(1.0, 0.0, 0.0), 1.0, sphere2Mat);\n  if (s2.t < closest.t) closest = s2;\n  \n  return closest;\n}\n\nvec3 shade(Hit hit, vec3 rd) {\n  if (hit.t >= MAX_DIST) return vec3(0.05, 0.05, 0.1);\n  \n  vec3 lightDir = normalize(vec3(1.0, 2.0, 1.0));\n  float diff = max(dot(hit.normal, lightDir), 0.0);\n  vec3 viewDir = -rd;\n  vec3 halfDir = normalize(lightDir + viewDir);\n  float spec = pow(max(dot(hit.normal, halfDir), 0.0), 32.0);\n  \n  vec3 ambient = hit.material.albedo * 0.1;\n  vec3 diffuse = hit.material.albedo * diff * 0.8;\n  vec3 specular = vec3(1.0) * spec * (1.0 - hit.material.roughness);\n  \n  return ambient + diffuse + specular;\n}\n\nvoid main() {\n  vec2 uv = (gl_FragCoord.xy * 2.0 - u_resolution) / min(u_resolution.x, u_resolution.y);\n  vec3 ro = vec3(0.0, 2.0, 5.0);\n  vec3 rd = normalize(vec3(uv, -1.5));\n  \n  Hit hit = trace(ro, rd);\n  vec3 col = shade(hit, rd);\n  \n  fragColor = vec4(col, 1.0);\n}"
+  },
+  "pathTracing": {
+    "name": "Path Tracing",
+    "category": "raytracing",
+    "description": "Unbiased path tracing with multiple bounces",
+    "vertex": "#version 300 es\nin vec2 a_position;\nout vec2 v_uv;\nvoid main() {\n  v_uv = a_position * 0.5 + 0.5;\n  gl_Position = vec4(a_position, 0.0, 1.0);\n}",
+    "fragment": "#version 300 es\nprecision highp float;\nuniform float u_time;\nuniform vec2 u_resolution;\nin vec2 v_uv;\nout vec4 fragColor;\n\n#define PI 3.14159265359\n#define MAX_DIST 100.0\n\nfloat hash(vec2 p) {\n  return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);\n}\n\nvec3 randomDirection(vec2 seed) {\n  float z = 1.0 - 2.0 * hash(seed);\n  float r = sqrt(1.0 - z * z);\n  float phi = 2.0 * PI * hash(seed + 42.0);\n  return vec3(r * cos(phi), r * sin(phi), z);\n}\n\nfloat sdSphere(vec3 p, float r) { return length(p) - r; }\nfloat sdPlane(vec3 p, float h) { return p.y - h; }\n\nstruct Hit {\n  float t;\n  vec3 position;\n  vec3 normal;\n  vec3 albedo;\n  float emission;\n};\n\nHit traceScene(vec3 ro, vec3 rd) {\n  Hit closest;\n  closest.t = MAX_DIST;\n  \n  float floorT = sdPlane(ro + vec3(0.0, 1.0, 0.0), 0.0);\n  if (floorT > 0.0 && floorT < closest.t) {\n    closest.t = floorT;\n    closest.position = ro + rd * floorT;\n    closest.normal = vec3(0.0, 1.0, 0.0);\n    closest.albedo = vec3(0.8);\n    closest.emission = 0.0;\n  }\n  \n  Hit s1;\n  s1.t = sdSphere(ro - vec3(-1.5, 0.0, 0.0) + rd * 0.0, 1.0);\n  if (s1.t < closest.t) {\n    vec3 p = ro + rd * s1.t;\n    closest.t = s1.t;\n    closest.position = p;\n    closest.normal = normalize(p - vec3(-1.5, 0.0, 0.0));\n    closest.albedo = vec3(0.8, 0.2, 0.2);\n    closest.emission = 0.0;\n  }\n  \n  Hit s2;\n  s2.t = sdSphere(ro - vec3(1.5, 0.0, 0.0) + rd * 0.0, 1.0);\n  if (s2.t < closest.t) {\n    vec3 p = ro + rd * s2.t;\n    closest.t = s2.t;\n    closest.position = p;\n    closest.normal = normalize(p - vec3(1.5, 0.0, 0.0));\n    closest.albedo = vec3(0.2, 0.8, 0.2);\n    closest.emission = 0.0;\n  }\n  \n  Hit light;\n  light.t = sdSphere(ro - vec3(0.0, 3.0, 0.0) + rd * 0.0, 0.5);\n  if (light.t < closest.t) {\n    vec3 p = ro + rd * light.t;\n    closest.t = light.t;\n    closest.position = p;\n    closest.normal = normalize(p - vec3(0.0, 3.0, 0.0));\n    closest.albedo = vec3(1.0);\n    closest.emission = 5.0;\n  }\n  \n  return closest;\n}\n\nvec3 pathTrace(vec3 ro, vec3 rd) {\n  vec3 throughput = vec3(1.0);\n  vec3 emission = vec3(0.0);\n  \n  for (int bounce = 0; bounce < 8; bounce++) {\n    Hit hit = traceScene(ro, rd);\n    \n    if (hit.t >= MAX_DIST) {\n      emission += throughput * vec3(0.05, 0.05, 0.1);\n      break;\n    }\n    \n    emission += throughput * hit.albedo * hit.emission;\n    \n    vec3 newDir = normalize(hit.normal + randomDirection(gl_FragCoord.xy + float(bounce) * 100.0));\n    throughput *= hit.albedo;\n    ro = hit.position + hit.normal * 0.01;\n    rd = newDir;\n  }\n  \n  return emission;\n}\n\nvoid main() {\n  vec2 uv = (gl_FragCoord.xy * 2.0 - u_resolution) / min(u_resolution.x, u_resolution.y);\n  vec3 ro = vec3(0.0, 2.0, 5.0);\n  vec3 rd = normalize(vec3(uv, -1.5));\n  \n  vec3 col = pathTrace(ro, rd);\n  col = col / (col + vec3(1.0));\n  col = pow(col, vec3(1.0/2.2));\n  \n  fragColor = vec4(col, 1.0);\n}"
+  },
+  "glass": {
+    "name": "Glass",
+    "category": "raytracing",
+    "description": "Glass material with refraction and Fresnel",
+    "vertex": "#version 300 es\nin vec2 a_position;\nout vec2 v_uv;\nvoid main() {\n  v_uv = a_position * 0.5 + 0.5;\n  gl_Position = vec4(a_position, 0.0, 1.0);\n}",
+    "fragment": "#version 300 es\nprecision highp float;\nuniform float u_time;\nuniform vec2 u_resolution;\nin vec2 v_uv;\nout vec4 fragColor;\n\n#define PI 3.14159265359\n#define MAX_DIST 100.0\n\nfloat hash(vec2 p) {\n  return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);\n}\n\nfloat sdSphere(vec3 p, float r) { return length(p) - r; }\nfloat sdPlane(vec3 p, float h) { return p.y - h; }\n\nfloat schlick(float cosine, float ior) {\n  float r0 = (1.0 - ior) / (1.0 + ior);\n  r0 = r0 * r0;\n  return r0 + (1.0 - r0) * pow(1.0 - cosine, 5.0);\n}\n\nstruct Hit {\n  float t;\n  vec3 position;\n  vec3 normal;\n  float ior;\n};\n\nHit traceScene(vec3 ro, vec3 rd) {\n  Hit closest;\n  closest.t = MAX_DIST;\n  closest.ior = 1.0;\n  \n  float floorT = sdPlane(ro + vec3(0.0, 1.0, 0.0), 0.0);\n  if (floorT > 0.0 && floorT < closest.t) {\n    closest.t = floorT;\n    closest.position = ro + rd * floorT;\n    closest.normal = vec3(0.0, 1.0, 0.0);\n    closest.ior = 1.0;\n  }\n  \n  Hit s1;\n  s1.t = sdSphere(ro - vec3(0.0, 0.0, 0.0) + rd * 0.0, 1.0);\n  if (s1.t < closest.t) {\n    vec3 p = ro + rd * s1.t;\n    closest.t = s1.t;\n    closest.position = p;\n    closest.normal = normalize(p - vec3(0.0, 0.0, 0.0));\n    closest.ior = 1.5;\n  }\n  \n  return closest;\n}\n\nvec3 tracePath(vec3 ro, vec3 rd) {\n  vec3 throughput = vec3(1.0);\n  vec3 emission = vec3(0.0);\n  \n  for (int bounce = 0; bounce < 8; bounce++) {\n    Hit hit = traceScene(ro, rd);\n    \n    if (hit.t >= MAX_DIST) {\n      emission += throughput * vec3(0.1, 0.1, 0.2);\n      break;\n    }\n    \n    if (hit.ior > 1.0) {\n      float cosTheta = dot(-rd, hit.normal);\n      float kr = schlick(cosTheta, hit.ior);\n      \n      if (hash(gl_FragCoord.xy + float(bounce) * 73.0) < kr) {\n        rd = reflect(rd, hit.normal);\n      } else {\n        vec3 outwardNormal;\n        float eta;\n        if (cosTheta > 0.0) {\n          outwardNormal = -hit.normal;\n          eta = 1.0 / hit.ior;\n        } else {\n          outwardNormal = hit.normal;\n          eta = hit.ior;\n        }\n        rd = refract(rd, outwardNormal, eta);\n        if (length(rd) < 0.001) rd = reflect(rd, hit.normal);\n      }\n      ro = hit.position + rd * 0.01;\n    } else {\n      vec3 lightDir = normalize(vec3(1.0, 2.0, 1.0));\n      float diff = max(dot(hit.normal, lightDir), 0.0);\n      emission += throughput * vec3(0.8) * diff;\n      throughput *= 0.0;\n    }\n  }\n  \n  return emission;\n}\n\nvoid main() {\n  vec2 uv = (gl_FragCoord.xy * 2.0 - u_resolution) / min(u_resolution.x, u_resolution.y);\n  vec3 ro = vec3(0.0, 2.0, 5.0);\n  vec3 rd = normalize(vec3(uv, -1.5));\n  \n  vec3 col = tracePath(ro, rd);\n  col = col / (col + vec3(1.0));\n  col = pow(col, vec3(1.0/2.2));\n  \n  fragColor = vec4(col, 1.0);\n}"
+  },
+  "glow": {
+    "name": "Glow",
+    "category": "effects",
+    "description": "Glow effect with distance field",
+    "vertex": "#version 300 es\nin vec2 a_position;\nout vec2 v_uv;\nvoid main() {\n  v_uv = a_position * 0.5 + 0.5;\n  gl_Position = vec4(a_position, 0.0, 1.0);\n}",
+    "fragment": "#version 300 es\nprecision mediump float;\nuniform float u_time;\nuniform vec2 u_resolution;\nin vec2 v_uv;\nout vec4 fragColor;\n\nvoid main() {\n  vec2 p = (gl_FragCoord.xy * 2.0 - u_resolution) / min(u_resolution.x, u_resolution.y);\n  float d = length(p) - 0.3;\n  float glow = 0.02 / max(abs(d), 0.001);\n  glow = pow(glow * 0.3, 1.5);\n  vec3 col = glow * vec3(0.2, 0.5, 1.0);\n  float core = 1.0 - smoothstep(0.0, 0.01, abs(d));\n  col += core * vec3(1.0);\n  fragColor = vec4(col, 1.0);\n}"
+  },
+  "distortion": {
+    "name": "Distortion",
+    "category": "effects",
+    "description": "UV distortion effect",
+    "vertex": "#version 300 es\nin vec2 a_position;\nout vec2 v_uv;\nvoid main() {\n  v_uv = a_position * 0.5 + 0.5;\n  gl_Position = vec4(a_position, 0.0, 1.0);\n}",
+    "fragment": "#version 300 es\nprecision mediump float;\nuniform float u_time;\nuniform vec2 u_resolution;\nin vec2 v_uv;\nout vec4 fragColor;\n\nvoid main() {\n  vec2 p = (gl_FragCoord.xy * 2.0 - u_resolution) / min(u_resolution.x, u_resolution.y);\n  float t = u_time;\n  vec2 q = p + 0.1 * sin(t + p.yx * 5.0);\n  float d1 = length(q) - 0.3;\n  float d2 = length(q - vec2(0.3 * sin(t), 0.2 * cos(t))) - 0.15;\n  vec3 col = 0.02 / max(abs(d1), 0.001) * vec3(0.5, 0.2, 0.8)\n           + 0.02 / max(abs(d2), 0.001) * vec3(0.2, 0.8, 0.5);\n  fragColor = vec4(col * 0.3, 1.0);\n}"
+  },
+  "kira": {
+    "name": "Kira Kira",
+    "category": "effects",
+    "description": "Sparkle / twinkle shader",
+    "vertex": "#version 300 es\nin vec2 a_position;\nout vec2 v_uv;\nvoid main() {\n  v_uv = a_position * 0.5 + 0.5;\n  gl_Position = vec4(a_position, 0.0, 1.0);\n}",
+    "fragment": "#version 300 es\nprecision mediump float;\nuniform float u_time;\nuniform vec2 u_resolution;\nin vec2 v_uv;\nout vec4 fragColor;\n\nfloat random(vec2 st) {\n  return fract(sin(dot(st, vec2(12.9898, 78.233))) * 43758.5453);\n}\n\nvoid main() {\n  vec2 st = v_uv * 20.0;\n  st.y += mod(floor(st.x), 2.0) * 0.5;\n  vec2 i_st = floor(st);\n  vec2 f_st = fract(st) - 0.5;\n  float sparkle = random(i_st + floor(u_time * 2.0));\n  sparkle = step(0.92, sparkle);\n  float d = length(f_st);\n  float shape = sparkle * (1.0 - smoothstep(0.0, 0.2, d));\n  float cross = sparkle * (1.0 - smoothstep(0.0, 0.04, min(abs(f_st.x), abs(f_st.y)))) * (1.0 - smoothstep(0.15, 0.2, d));\n  float glow = sparkle * 0.15 / max(d, 0.05);\n  vec3 col = (shape + cross) * vec3(1.0, 0.95, 0.8) + glow * vec3(0.5, 0.7, 1.0);\n  col *= 0.8 + 0.2 * sin(u_time * 3.0 + random(i_st) * 6.28);\n  fragColor = vec4(col, 1.0);\n}"
+  }
+}
