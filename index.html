@@ -26,10 +26,11 @@
 
   <script type="module">
     // Load JSON data
+    const bust = '?t=' + Date.now();
     const [shadersData, implData, uiData] = await Promise.all([
-      fetch('data/shaders.json').then(r => r.json()),
-      fetch('data/impl.json').then(r => r.json()),
-      fetch('data/ui.json').then(r => r.json())
+      fetch('data/shaders.json' + bust).then(r => r.json()),
+      fetch('data/impl.json' + bust).then(r => r.json()),
+      fetch('data/ui.json' + bust).then(r => r.json())
     ]);
 
     // Set title
@@ -58,7 +59,10 @@
       gl.shaderSource(s, src);
       gl.compileShader(s);
       if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
-        console.error(gl.getShaderInfoLog(s));
+        const log = gl.getShaderInfoLog(s) || 'No info log';
+        const typeName = type === gl.VERTEX_SHADER ? 'VERTEX' : 'FRAGMENT';
+        console.error('[' + typeName + '] ' + log);
+        console.error('Source first 200 chars:', src.substring(0, 200));
         return null;
       }
       return s;
