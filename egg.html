@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Egg - WebGPU</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #000; overflow: hidden; }
+    canvas { display: block; width: 100vw; height: 100vh; }
+    #info {
+      position: fixed; bottom: 16px; left: 16px; z-index: 10;
+      color: rgba(255,255,255,0.5); font-size: 12px;
+      font-family: 'Segoe UI', sans-serif;
+    }
+    #error {
+      position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      color: #ff6b6b; font-family: monospace; text-align: center;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="c"></canvas>
+  <div id="info">WebGPU Egg</div>
+  <div id="error"></div>
+
+<script type="module">
+const errorEl = document.getElementById('error');
+
+if (!navigator.gpu) {
+  errorEl.style.display = 'block';
+  errorEl.textContent = 'WebGPU is not supported in this browser.';
+  throw new Error('No WebGPU');
+}
+
+const adapter = await navigator.gpu.requestAdapter();
+if (!adapter) {
+  errorEl.style.display = 'block';
+  errorEl.textContent = 'Failed to get GPU adapter.';
+  throw new Error('No adapter');
+}
+
+const device = await adapter.requestDevice();
+const canvas = document.getElementById('c');
+const context = canvas.getContext('webgpu');
+const format = navigator.gpu.getPreferredCanvasFormat();
+context.configure({ device, format, alphaMode: 'premultiplied' });
+
+function resize() {
+  const dpr = Math.min(window.devicePixelRatio, 2);
+  canvas.width = window.innerWidth * dpr;
+  canvas.height = window.innerHeight * dpr;
+}
+resize();
+window.addEventListener('resize', resize);
+
+const shaderCode = `
+struct Uniforms {
+  time: f32,
+  width: f32,
+  height: f32,
+  mouseX: f32,
+  mouseY: f32,
+};
+
+@group(0) @binding(0) var<uniform> u: Uniforms;
+
+struct VertexOutput {
+  @builtin(position) pos: vec4f,
+  @location(0) uv: vec2f,
+};
+
+@vertex
+fn vs(@builtin(vertex_index) vi: u32) -> VertexOutput {
+  var out: VertexOutput;
+  let x = f32(i32(vi & 1u) * 2 - 1);
+  let y = f32(i32(vi >> 1u & 1u) * 2 - 1);
+  out.pos = vec4f(x, y, 0.0, 1.0);
+  out.uv = vec2f(x, y);
+  return out;
+}
+
+fn hash21(p: vec2f) -> f32 {
+  var p3 = fract(vec3f(p.xyx) * 0.1031);
+  p3 += dot(p3, p3.yzx + 33.33);
+  return fract((p3.x + p3.y) * p3.z);
+}
+
+fn noise3d(p: vec3f) -> f32 {
+  let i = floor(p);
+  let f = fract(p);
+  let u = f * f * (3.0 - 2.0 * f);
+
+  let a = hash21(vec2f(i.x + i.y * 157.0 + i.z * 113.0));
+  let b = hash21(vec2f(i.x + 1.0 + i.y * 157.0 + i.z * 113.0));
+  let c = hash21(vec2f(i.x + (i.y + 1.0) * 157.0 + i.z * 113.0));
+  let d = hash21(vec2f(i.x + 1.0 + (i.y + 1.0) * 157.0 + i.z * 113.0));
+  let e = hash21(vec2f(i.x + i.y * 157.0 + (i.z + 1.0) * 113.0));
+  let f2 = hash21(vec2f(i.x + 1.0 + i.y * 157.0 + (i.z + 1.0) * 113.0));
+  let g = hash21(vec2f(i.x + (i.y + 1.0) * 157.0 + (i.z + 1.0) * 113.0));
+  let h = hash21(vec2f(i.x + 1.0 + (i.y + 1.0) * 157.0 + (i.z + 1.0) * 113.0));
+
+  return mix(mix(mix(a, b, u.x), mix(c, d, u.x), u.y),
+             mix(mix(e, f2, u.x), mix(g, h, u.x), u.y), u.z);
+}
+
+fn fbm(p: vec3f) -> f32 {
+  var v = 0.0;
+  var a = 0.5;
+  var pp = p;
+  for (var i = 0; i < 5; i++) {
+    v += a * noise3d(pp);
+    pp *= 2.02;
+    a *= 0.5;
+  }
+  return v;
+}
+
+fn sdEllipsoid(p: vec3f, r: vec3f) -> f32 {
+  let k0 = length(p / r);
+  let k1 = length(p / (r * r));
+  return k0 * (k0 - 1.0) / k1;
+}
+
+fn sdEgg(p: vec3f) -> f32 {
+  let stretch = 1.3;
+  let topScale = 1.08;
+  var pp = p;
+  let y = pp.y;
+  let s = select(topScale, 1.0, y < 0.0);
+  pp.y = pp.y / stretch;
+  return sdEllipsoid(pp, vec3f(0.38 * s, 0.55, 0.38 * s));
+}
+
+fn sdSphere(p: vec3f, r: f32) -> f32 {
+  return length(p) - r;
+}
+
+fn scene(p: vec3f) -> f32 {
+  return sdEgg(p);
+}
+
+fn normal(p: vec3f) -> vec3f {
+  let e = vec2f(0.001, 0.0);
+  return normalize(vec3f(
+    scene(p + vec3f(e.x, e.y, e.y)) - scene(p - vec3f(e.x, e.y, e.y)),
+    scene(p + vec3f(e.y, e.x, e.y)) - scene(p - vec3f(e.y, e.x, e.y)),
+    scene(p + vec3f(e.y, e.y, e.x)) - scene(p - vec3f(e.y, e.y, e.x))
+  ));
+}
+
+fn softShadow(ro: vec3f, rd: vec3f, mint: f32, maxt: f32, k: f32) -> f32 {
+  var res = 1.0;
+  var t = mint;
+  for (var i = 0; i < 32; i++) {
+    let d = scene(ro + rd * t);
+    if (d < 0.0005) { return 0.05; }
+    res = min(res, k * d / t);
+    t += clamp(d, 0.02, 0.1);
+    if (t > maxt) { break; }
+  }
+  return clamp(res, 0.0, 1.0);
+}
+
+fn fresnel(v: vec3f, n: vec3f, ior: f32) -> f32 {
+  let cosTheta = clamp(dot(v, n), 0.0, 1.0);
+  let r0 = pow((1.0 - ior) / (1.0 + ior), 2.0);
+  return r0 + (1.0 - r0) * pow(1.0 - cosTheta, 5.0);
+}
+
+@fragment
+fn fs(@location(0) uv: vec2f) -> @location(0) vec4f {
+  let t = u.time;
+  let aspect = u.width / u.height;
+  let p = vec2f(uv.x * aspect, uv.y);
+
+  let ro = vec3f(0.0, 0.2, 2.2);
+  let lookAt = vec3f(0.0, 0.05, 0.0);
+  let fwd = normalize(lookAt - ro);
+  let right = normalize(cross(fwd, vec3f(0.0, 1.0, 0.0)));
+  let up = cross(right, fwd);
+  let rd = normalize(fwd + p.x * right + p.y * up);
+
+  let lightPos = vec3f(2.0, 3.0, 2.0);
+  let lightDir = normalize(lightPos);
+  let lightCol = vec3f(1.0, 0.95, 0.9);
+
+  var col = vec3f(0.0);
+  var t_hit = 0.01;
+
+  var hit = false;
+  for (var i = 0; i < 100; i++) {
+    let p3 = ro + rd * t_hit;
+    let d = scene(p3);
+    if (d < 0.0005) {
+      hit = true;
+      break;
+    }
+    t_hit += d;
+    if (t_hit > 20.0) { break; }
+  }
+
+  if (hit) {
+    let pos = ro + rd * t_hit;
+    let N = normal(pos);
+    let V = -rd;
+    let L = lightDir;
+    let H = normalize(V + L);
+
+    let shadow = softShadow(pos + N * 0.002, L, 0.05, 4.0, 16.0);
+
+    let diff = max(dot(N, L), 0.0);
+    let spec = pow(max(dot(N, H), 0.0), 64.0);
+    let fres = fresnel(V, N, 1.45);
+
+    let eggBase = vec3f(0.95, 0.92, 0.85);
+    let eggWarm = vec3f(1.0, 0.96, 0.88);
+
+    let n = fbm(pos * 8.0 + 5.0);
+    let eggCol = mix(eggBase, eggWarm, n * 0.3);
+
+    let subsurface = max(dot(-L, N), 0.0) * 0.15;
+    let sss = vec3f(1.0, 0.7, 0.5) * subsurface * 0.3;
+
+    let ambient = vec3f(0.15, 0.18, 0.22);
+    let diffCol = eggCol * diff * shadow * 0.85;
+    let specCol = mix(vec3f(0.04), vec3f(1.0), fres) * spec * shadow * 0.5;
+    let rim = pow(1.0 - max(dot(V, N), 0.0), 3.0) * vec3f(0.3, 0.35, 0.4) * 0.2;
+
+    col = ambient * eggCol * 0.4 + diffCol + specCol + sss + rim;
+
+    let envReflect = reflect(-V, N);
+    let env = mix(vec3f(0.1, 0.12, 0.18), vec3f(0.3, 0.35, 0.45), envReflect.y * 0.5 + 0.5);
+    col += env * fres * 0.15;
+  } else {
+    let envReflect = reflect(-rd, vec3f(0.0, 1.0, 0.0));
+    col = mix(vec3f(0.12, 0.14, 0.2), vec3f(0.25, 0.3, 0.4), envReflect.y * 0.5 + 0.5);
+  }
+
+  let sunDir = normalize(vec3f(0.5, 0.3, 0.8));
+  let sunDot = max(dot(rd, sunDir), 0.0);
+  col += vec3f(1.0, 0.9, 0.7) * pow(sunDot, 32.0) * 0.15;
+
+  col = col / (col + vec3f(1.0));
+  col = pow(col, vec3f(0.4545));
+
+  let vignette = 1.0 - 0.2 * length(uv);
+  col *= vignette;
+
+  return vec4f(col, 1.0);
+}
+`;
+
+const module = device.createShaderModule({ code: shaderCode });
+
+const pipeline = device.createRenderPipeline({
+  layout: 'auto',
+  vertex: { module, entryPoint: 'vs' },
+  fragment: {
+    module,
+    entryPoint: 'fs',
+    targets: [{ format }]
+  },
+});
+
+const uniformBuffer = device.createBuffer({
+  size: 32,
+  usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+});
+
+const bindGroup = device.createBindGroup({
+  layout: pipeline.getBindGroupLayout(0),
+  entries: [{ binding: 0, resource: { buffer: uniformBuffer } }],
+});
+
+const uniformData = new Float32Array(8);
+let mouseX = 0, mouseY = 0;
+canvas.addEventListener('mousemove', e => {
+  mouseX = e.clientX;
+  mouseY = e.clientY;
+});
+
+function render(time) {
+  const w = canvas.width;
+  const h = canvas.height;
+
+  uniformData[0] = time * 0.001;
+  uniformData[1] = w;
+  uniformData[2] = h;
+  uniformData[3] = mouseX;
+  uniformData[4] = mouseY;
+  device.queue.writeBuffer(uniformBuffer, 0, uniformData);
+
+  const textureView = context.getCurrentTexture().createView();
+  const encoder = device.createCommandEncoder();
+  const pass = encoder.beginRenderPass({
+    colorAttachments: [{
+      view: textureView,
+      loadOp: 'clear',
+      clearValue: { r: 0, g: 0, b: 0, a: 1 },
+      storeOp: 'store',
+    }]
+  });
+  pass.setPipeline(pipeline);
+  pass.setBindGroup(0, bindGroup);
+  pass.draw(4);
+  pass.end();
+  device.queue.submit([encoder.finish()]);
+  requestAnimationFrame(render);
+}
+requestAnimationFrame(render);
+</script>
+</body>
+</html>
