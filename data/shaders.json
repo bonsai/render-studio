@@ -1,16 +1,6 @@
 {
   "version": "1.0.0",
   "description": "Render Studio - Unified GLSL Shader Collection",
-  "shaders": {
-    "common": {
-      "name": "Common Library",
-      "code": "#version 300 es\nprecision highp float;\nuniform float u_time;\nuniform vec2 u_resolution;\nuniform vec2 u_mouse;\nuniform int u_frame;\nin vec2 v_uv;\nout vec4 fragColor;\n\n#define PI 3.14159265359\n#define MAX_DIST 100.0\n#define MAX_STEPS 100\n#define SURF_DIST 0.001\n\nstruct Material {\n  vec3 albedo;\n  float roughness;\n  float metallic;\n  float emission;\n  float ior;\n};\n\nstruct Hit {\n  float t;\n  vec3 position;\n  vec3 normal;\n  Material material;\n  int objectId;\n};\n\nfloat hash(vec2 p) {\n  return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);\n}\n\nfloat hash3(vec3 p) {\n  return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453);\n}\n\nvec3 randomDirection(vec2 seed) {\n  float z = 1.0 - 2.0 * hash(seed);\n  float r = sqrt(1.0 - z * z);\n  float phi = 2.0 * PI * hash(seed + 42.0);\n  return vec3(r * cos(phi), r * sin(phi), z);\n}\n\nvec2 aspectCorrect(vec2 uv, vec2 res) {\n  return (gl_FragCoord.xy * 2.0 - res) / min(res.x, res.y);\n}\n\nHit miss() {\n  Hit h;\n  h.t = MAX_DIST;\n  h.position = vec3(0.0);\n  h.normal = vec3(0.0);\n  h.material.albedo = vec3(0.0);\n  h.material.roughness = 0.0;\n  h.material.metallic = 0.0;\n  h.material.emission = 0.0;\n  h.material.ior = 1.0;\n  h.objectId = -1;\n  return h;\n}\n"
-    },
-    "sdf": {
-      "name": "SDF Common",
-      "code": "float sdSphere(vec3 p, float r) { return length(p) - r; }\nfloat sdPlane(vec3 p, float h) { return p.y - h; }\nfloat sdBox(vec3 p, vec3 b) {\n  vec3 q = abs(p) - b;\n  return length(max(q, 0.0)) + min(max(q.x, max(q.y, q.z)), 0.0);\n}\nfloat sdTorus(vec3 p, vec2 t) {\n  vec2 q = vec2(length(p.xz) - t.x, p.y);\n  return length(q) - t.y;\n}\nfloat sdEgg(vec3 p, float h, float r) {\n  vec3 q = p;\n  float taper = 1.0 - 0.3 * smoothstep(0.0, h, q.y);\n  q.xz /= taper;\n  q.y /= h;\n  return (length(q) - r) * min(taper, 1.0) * h;\n}\n"
-    }
-  },
   "categories": {
     "pattern": {
       "name": "Pattern",
@@ -28,17 +18,9 @@
       "name": "Ray Tracing",
       "shaders": ["basicRT", "pathTracing", "glass"]
     },
-    "lighting": {
-      "name": "Lighting",
-      "shaders": ["phong", "normal", "shadowHard", "shadowSoft"]
-    },
     "effects": {
       "name": "Effects",
       "shaders": ["glow", "distortion", "kira", "poolWater"]
-    },
-    "egg": {
-      "name": "Egg Shadows",
-      "shaders": ["eggHard", "eggPCF", "eggPoisson", "eggVSM", "eggRaytraced"]
     }
   }
 }

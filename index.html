@@ -8,24 +8,30 @@
 </head>
 <body>
   <div id="app">
-    <div id="sidebar">
-      <h2 id="app-title">Render Studio</h2>
-      <div id="shader-list"></div>
-    </div>
-    <div id="main">
-      <div id="canvas-wrap">
-        <canvas id="c"></canvas>
-        <div id="config-panel"></div>
+    <nav id="topnav">
+      <span class="logo" id="app-title">Render Studio</span>
+      <a href="index.html" class="active">Shaders</a>
+      <a href="scenes.html">Scenes</a>
+      <a href="raytracer.html">Ray Tracer</a>
+      <a href="egg.html">WebGPU Egg</a>
+    </nav>
+    <div id="workspace">
+      <div id="sidebar">
+        <div id="shader-list"></div>
       </div>
-      <div id="info">
-        <div class="title" id="info-title">Loading...</div>
-        <div id="info-desc"></div>
+      <div id="main">
+        <div id="canvas-wrap">
+          <canvas id="c"></canvas>
+        </div>
+        <div id="info">
+          <div class="title" id="info-title">Select a shader</div>
+          <div id="info-desc"></div>
+        </div>
       </div>
     </div>
   </div>
 
   <script type="module">
-    // Load JSON data
     const bust = '?t=' + Date.now();
     const [shadersData, implData, uiData] = await Promise.all([
       fetch('data/shaders.json' + bust).then(r => r.json()),
@@ -33,19 +39,17 @@
       fetch('data/ui.json' + bust).then(r => r.json())
     ]);
 
-    // Set title
     document.getElementById('app-title').textContent = uiData.app.title;
 
-    // WebGL setup
     const canvas = document.getElementById('c');
     const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
-    if (!gl) { alert('WebGL required'); }
+    if (!gl) { document.getElementById('info-desc').textContent = 'WebGL is not supported.'; }
 
     function resize() {
       const dpr = Math.min(window.devicePixelRatio, 2);
       canvas.width = canvas.clientWidth * dpr;
       canvas.height = canvas.clientHeight * dpr;
-      gl.viewport(0, 0, canvas.width, canvas.height);
+      if (gl) gl.viewport(0, 0, canvas.width, canvas.height);
     }
     window.addEventListener('resize', resize);
     resize();
@@ -59,25 +63,10 @@
       gl.shaderSource(s, src);
       gl.compileShader(s);
       if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
-        const log = gl.getShaderInfoLog(s) || 'No info log';
-        const typeName = type === gl.VERTEX_SHADER ? 'VERTEX' : 'FRAGMENT';
-        console.error('[' + typeName + '] ' + log);
-        console.error('Source first 200 chars:', src.substring(0, 200));
+        console.error('[' + (type === gl.VERTEX_SHADER ? 'VS' : 'FS') + ']', gl.getShaderInfoLog(s));
         return null;
       }
       return s;
-    }
-
-    function linkProgram(vs, fs) {
-      const p = gl.createProgram();
-      gl.attachShader(p, vs);
-      gl.attachShader(p, fs);
-      gl.linkProgram(p);
-      if (!gl.getProgramParameter(p, gl.LINK_STATUS)) {
-        console.error(gl.getProgramInfoLog(p));
-        return null;
-      }
-      return p;
     }
 
     let currentProgram = null;
@@ -86,52 +75,56 @@
     function loadShader(name) {
       const shader = implData[name];
       if (!shader) return;
-      
+
       const vs = compileShader(shader.vertex, gl.VERTEX_SHADER);
       const fs = compileShader(shader.fragment, gl.FRAGMENT_SHADER);
       if (!vs || !fs) return;
-      
-      currentProgram = linkProgram(vs, fs);
-      if (!currentProgram) return;
-      
+
+      const p = gl.createProgram();
+      gl.attachShader(p, vs);
+      gl.attachShader(p, fs);
+      gl.linkProgram(p);
+      if (!gl.getProgramParameter(p, gl.LINK_STATUS)) {
+        console.error(gl.getProgramInfoLog(p));
+        return;
+      }
+
+      currentProgram = p;
       gl.useProgram(currentProgram);
       const posLoc = gl.getAttribLocation(currentProgram, 'a_position');
       gl.enableVertexAttribArray(posLoc);
       gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
-      
+
       startTime = Date.now();
-      
       document.getElementById('info-title').textContent = shader.name;
       document.getElementById('info-desc').textContent = shader.description;
     }
 
     function render() {
       if (!currentProgram) { requestAnimationFrame(render); return; }
-      
       const t = (Date.now() - startTime) * 0.001;
       gl.uniform1f(gl.getUniformLocation(currentProgram, 'u_time'), t);
       gl.uniform2f(gl.getUniformLocation(currentProgram, 'u_resolution'), canvas.width, canvas.height);
       gl.uniform2f(gl.getUniformLocation(currentProgram, 'u_mouse'), 0, 0);
       gl.uniform1i(gl.getUniformLocation(currentProgram, 'u_frame'), 0);
-      
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
       requestAnimationFrame(render);
     }
 
-    // Build UI from JSON
     const sidebar = document.getElementById('shader-list');
     const categories = shadersData.categories;
-    
+    let firstBtn = null;
+
     Object.entries(categories).forEach(([catKey, cat]) => {
       const catDiv = document.createElement('div');
       catDiv.className = 'category';
       catDiv.textContent = uiData.categories[catKey] || cat.name;
       sidebar.appendChild(catDiv);
-      
+
       cat.shaders.forEach(shaderName => {
         const shaderInfo = implData[shaderName];
         if (!shaderInfo) return;
-        
+
         const btn = document.createElement('button');
         btn.dataset.shader = shaderName;
         btn.textContent = uiData.shaders[shaderName] || shaderInfo.name;
@@ -141,11 +134,11 @@
           loadShader(shaderName);
         });
         sidebar.appendChild(btn);
+        if (!firstBtn) firstBtn = btn;
       });
     });
 
-    // Init
-    loadShader('basicRT');
+    if (firstBtn) firstBtn.click();
     render();
   </script>
 </body>

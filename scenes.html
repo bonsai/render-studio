@@ -21,6 +21,20 @@
     }
     #nav button:hover { background: rgba(255,255,255,0.15); }
     #nav button.active { background: rgba(255,255,255,0.25); border-color: rgba(255,255,255,0.5); }
+    #topnav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 20;
+      display: flex; align-items: center; gap: 2px; padding: 0 12px;
+      height: 36px; background: rgba(0,0,0,0.8);
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      backdrop-filter: blur(8px);
+    }
+    #topnav .logo { font-size: 12px; font-weight: 700; color: #0088ff; margin-right: 12px; }
+    #topnav a {
+      font-size: 11px; color: #888; text-decoration: none;
+      padding: 5px 10px; border-radius: 4px; transition: all 0.12s;
+    }
+    #topnav a:hover { color: #fff; background: rgba(255,255,255,0.1); }
+    #topnav a.active { color: #fff; background: #0066cc; }
     #info {
       position: fixed; bottom: 16px; left: 16px; z-index: 10;
       color: rgba(255,255,255,0.6); font-size: 12px;
@@ -50,7 +64,14 @@
   </style>
 </head>
 <body>
-  <div id="nav">
+  <div id="topnav">
+    <span class="logo">Render Studio</span>
+    <a href="index.html">Shaders</a>
+    <a href="scenes.html" class="active">Scenes</a>
+    <a href="raytracer.html">Ray Tracer</a>
+    <a href="egg.html">WebGPU Egg</a>
+  </div>
+  <div id="nav" style="top: 36px;">
     <button class="active" data-scene="0">Pool</button>
     <button data-scene="1">Desert</button>
     <button data-scene="2">Nebula</button>

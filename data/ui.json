@@ -1,41 +1,30 @@
 {
   "app": {
     "title": "Render Studio",
-    "subtitle": "Unified Rendering Pipeline Tool",
+    "subtitle": "GLSL Shader Playground",
     "version": "1.0.0"
   },
-  "menu": {
-    "pipeline": "Pipeline Type",
-    "shader": "Shader Selection",
-    "materials": "Materials",
-    "lighting": "Lighting",
-    "postProcessing": "Post-Processing",
-    "rayTracing": "Ray Tracing",
-    "save": "Save Config",
-    "load": "Load Config",
-    "quit": "Quit"
-  },
-  "pipelines": {
-    "forward": "Forward Rendering",
-    "deferred": "Deferred Rendering",
-    "pathTracing": "Path Tracing",
-    "rayTracing": "Ray Tracing"
+  "nav": {
+    "shaders": "Shaders",
+    "scenes": "Scenes",
+    "raytracer": "Ray Tracer",
+    "egg": "WebGPU Egg"
   },
   "shaders": {
-    "checker": "Checker Pattern",
+    "checker": "Checker",
     "circles": "Circles",
     "grid": "Grid",
-    "diamond": "Diamond Tiles",
+    "diamond": "Diamond",
     "valueNoise": "Value Noise",
     "gradientNoise": "Gradient Noise",
-    "fbm": "FBM (Fractal)",
+    "fbm": "FBM",
     "voronoi": "Voronoi",
     "sdfCircle": "SDF Circle",
     "sdfBox": "SDF Box",
     "sdfBlend": "SDF Blend",
     "basicRT": "Basic Ray Tracing",
     "pathTracing": "Path Tracing",
-    "glass": "Glass (Refraction)",
+    "glass": "Glass",
     "glow": "Glow",
     "distortion": "Distortion",
     "kira": "Kira Kira",
@@ -47,60 +36,5 @@
     "sdf": "SDF",
     "raytracing": "Ray Tracing",
     "effects": "Effects"
-  },
-  "materials": {
-    "diffuse": {
-      "name": "Diffuse",
-      "color": "Color",
-      "roughness": "Roughness"
-    },
-    "specular": {
-      "name": "Specular",
-      "metallic": "Metallic",
-      "roughness": "Roughness"
-    },
-    "glass": {
-      "name": "Glass",
-      "ior": "IOR",
-      "transmission": "Transmission"
-    },
-    "emissive": {
-      "name": "Emissive",
-      "intensity": "Intensity"
-    }
-  },
-  "lighting": {
-    "type": "Light Type",
-    "position": "Position",
-    "color": "Color",
-    "intensity": "Intensity",
-    "shadows": "Shadows",
-    "point": "Point Light",
-    "spot": "Spot Light",
-    "directional": "Directional",
-    "area": "Area Light",
-    "threePoint": "Three Point"
-  },
-  "postProcessing": {
-    "toneMapping": "Tone Mapping",
-    "exposure": "Exposure",
-    "bloom": "Bloom",
-    "enabled": "Enabled",
-    "intensity": "Intensity",
-    "none": "None",
-    "reinhard": "Reinhard",
-    "aces": "ACES",
-    "uncharted2": "Uncharted 2"
-  },
-  "rayTracing": {
-    "maxBounces": "Max Bounces",
-    "samplesPerPixel": "Samples Per Pixel",
-    "denoising": "Denoising"
-  },
-  "messages": {
-    "saved": "Configuration saved to",
-    "loaded": "Configuration loaded",
-    "error": "Error loading configuration",
-    "pressEnter": "Press Enter to continue..."
   }
 }

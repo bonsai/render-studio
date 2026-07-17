@@ -18,9 +18,30 @@
       color: #ff6b6b; font-family: monospace; text-align: center;
       display: none;
     }
+    #topnav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 20;
+      display: flex; align-items: center; gap: 2px; padding: 0 12px;
+      height: 36px; background: rgba(0,0,0,0.8);
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      backdrop-filter: blur(8px);
+    }
+    #topnav .logo { font-size: 12px; font-weight: 700; color: #0088ff; margin-right: 12px; }
+    #topnav a {
+      font-size: 11px; color: #888; text-decoration: none;
+      padding: 5px 10px; border-radius: 4px; transition: all 0.12s;
+    }
+    #topnav a:hover { color: #fff; background: rgba(255,255,255,0.1); }
+    #topnav a.active { color: #fff; background: #0066cc; }
   </style>
 </head>
 <body>
+  <div id="topnav">
+    <span class="logo">Render Studio</span>
+    <a href="index.html">Shaders</a>
+    <a href="scenes.html">Scenes</a>
+    <a href="raytracer.html">Ray Tracer</a>
+    <a href="egg.html" class="active">WebGPU Egg</a>
+  </div>
   <canvas id="c"></canvas>
   <div id="info">WebGPU Egg</div>
   <div id="error"></div>
