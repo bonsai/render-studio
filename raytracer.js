@@ -49,7 +49,7 @@ for (let i = 0; i < 16; i++) {
 }
 
 const vertexShader = `
-out vec2 v_uv;
+varying vec2 v_uv;
 void main() {
   v_uv = position.xy * 0.5 + 0.5;
   gl_Position = vec4(position.xy, 0.0, 1.0);
@@ -90,7 +90,7 @@ uniform float u_objIOR[MAX_OBJ];
 uniform float u_objTransmission[MAX_OBJ];
 uniform float u_objEmission[MAX_OBJ];
 
-in vec2 v_uv;
+varying vec2 v_uv;
 
 float hash(uint n) {
   n = (n << 13u) ^ n;
