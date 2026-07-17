@@ -34,7 +34,7 @@
     },
     "effects": {
       "name": "Effects",
-      "shaders": ["glow", "distortion", "kira"]
+      "shaders": ["glow", "distortion", "kira", "poolWater"]
     },
     "egg": {
       "name": "Egg Shadows",
