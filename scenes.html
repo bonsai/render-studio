@@ -311,6 +311,10 @@ float voronoi(vec2 st, float time) {
   return second_dist - min_dist;
 }
 
+vec2 hash2(vec2 p) {
+  return fract(sin(vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)))) * 43758.5453);
+}
+
 void main() {
   vec2 p = (gl_FragCoord.xy * 2.0 - u_resolution) / min(u_resolution.x, u_resolution.y);
   float t = u_time * 0.05;
@@ -353,10 +357,6 @@ void main() {
   col = pow(col, vec3(0.4545));
 
   fragColor = vec4(col, 1.0);
-}
-
-vec2 hash2(vec2 p) {
-  return fract(sin(vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)))) * 43758.5453);
 }`,
 
   // ========== SCENE 3: FOREST ==========
