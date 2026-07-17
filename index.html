@@ -89,7 +89,8 @@
       fetch('data/ui.json' + bust).then(r => r.json())
     ]);
 
-    document.getElementById('app-title').textContent = uiData.app.title;
+    const logoEl = document.querySelector('#topnav .logo');
+    if (logoEl) logoEl.textContent = uiData.app.title;
 
     const canvas = document.getElementById('c');
     const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
