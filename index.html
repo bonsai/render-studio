@@ -82,6 +82,8 @@
   </div>
 
   <script type="module">
+    import { initHandTrack } from './src/handtrack.js';
+
     const bust = '?t=' + Date.now();
     const [shadersData, implData, uiData] = await Promise.all([
       fetch('data/shaders.json' + bust).then(r => r.json()),
@@ -151,12 +153,19 @@
       document.getElementById('info-desc').textContent = shader.description;
     }
 
+    let mouse = { x: 0, y: 0 };
+    canvas.addEventListener('mousemove', e => {
+      const rect = canvas.getBoundingClientRect();
+      mouse.x = e.clientX;
+      mouse.y = rect.height - (e.clientY - rect.top);
+    });
+
     function render() {
       if (!currentProgram) { requestAnimationFrame(render); return; }
       const t = (Date.now() - startTime) * 0.001;
       gl.uniform1f(gl.getUniformLocation(currentProgram, 'u_time'), t);
       gl.uniform2f(gl.getUniformLocation(currentProgram, 'u_resolution'), canvas.width, canvas.height);
-      gl.uniform2f(gl.getUniformLocation(currentProgram, 'u_mouse'), 0, 0);
+      gl.uniform2f(gl.getUniformLocation(currentProgram, 'u_mouse'), mouse.x, mouse.y);
       gl.uniform1i(gl.getUniformLocation(currentProgram, 'u_frame'), 0);
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
       requestAnimationFrame(render);
@@ -198,6 +207,14 @@
     }
 
     render();
+
+    // MediaPipe hand tracking
+    const handUniforms = {
+      u_mouse: { value: { set: (x, y) => { mouse.x = x; mouse.y = y; } } }
+    };
+    initHandTrack(handUniforms, {
+      autoStart: new URLSearchParams(location.search).get('hand') === '1'
+    });
   </script>
 </body>
 </html>

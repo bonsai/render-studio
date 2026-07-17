@@ -409,6 +409,16 @@ function render(time) {
   requestAnimationFrame(render);
 }
 requestAnimationFrame(render);
+
+// MediaPipe hand tracking
+(async () => {
+  const { initHandTrack } = await import('./src/handtrack.js');
+  initHandTrack({
+    u_mouse: { value: { set: (x, y) => { mouseX = x; mouseY = y; } } }
+  }, {
+    autoStart: new URLSearchParams(location.search).get('hand') === '1'
+  });
+})();
 </script>
 </body>
 </html>

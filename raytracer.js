@@ -400,11 +400,15 @@ let camTheta = 0.5, camPhi = 0.8, camDist = 4.5;
 let camTarget = new THREE.Vector3(0, 0.5, 0);
 let isDragging = false, isRightDrag = false;
 let lastMouse = { x: 0, y: 0 };
+let lastInteraction = performance.now();
+let autoOrbit = true;
 
 canvas.addEventListener('mousedown', e => {
   isDragging = true;
   isRightDrag = e.button === 2;
   lastMouse = { x: e.clientX, y: e.clientY };
+  lastInteraction = performance.now();
+  autoOrbit = false;
 });
 window.addEventListener('mouseup', () => isDragging = false);
 canvas.addEventListener('contextmenu', e => e.preventDefault());
@@ -672,6 +676,15 @@ function animate(time) {
   const dt = (time - lastTime) * 0.001;
   lastTime = time;
   frameCount++;
+
+  // Auto-orbit after 3s idle
+  if (!isDragging && performance.now() - lastInteraction > 3000) {
+    autoOrbit = true;
+  }
+  if (autoOrbit) {
+    camTheta += dt * 0.15;
+    resetAccumulation();
+  }
   if (frameCount % 30 === 0) {
     fps = Math.round(1 / dt);
     document.getElementById('fps').textContent = fps + ' FPS | Frame: ' + uniforms.u_frameCount.value;
@@ -693,6 +706,27 @@ function animate(time) {
   }
 
   renderer.render(sc, cam);
-  requestAnimationFrame(animate);
+requestAnimationFrame(animate);
+
+// MediaPipe hand tracking
+import('./src/handtrack.js').then(({ initHandTrack }) => {
+  initHandTrack({
+    u_mouse: { value: { set: () => {} } }
+  }, {
+    autoStart: new URLSearchParams(location.search).get('hand') === '1',
+    onFrame: ({ x, y }) => {
+      // Map hand position to camera orbit
+      const nx = (x / window.innerWidth) * 2 - 1;
+      const ny = (y / window.innerHeight) * 2 - 1;
+      if (!isDragging) {
+        camTheta = nx * Math.PI;
+        camPhi = 0.3 + ny * 0.5;
+        lastInteraction = performance.now();
+        autoOrbit = false;
+        resetAccumulation();
+      }
+    }
+  });
+});
 }
 requestAnimationFrame(animate);

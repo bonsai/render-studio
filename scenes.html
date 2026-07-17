@@ -1062,6 +1062,13 @@ function animate() {
   requestAnimationFrame(animate);
 }
 animate();
+
+(async () => {
+  const { initHandTrack } = await import('./src/handtrack.js');
+  initHandTrack(uniforms, {
+    autoStart: new URLSearchParams(location.search).get('hand') === '1'
+  });
+})();
   </script>
 </body>
 </html>
