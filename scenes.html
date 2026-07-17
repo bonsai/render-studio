@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Render Studio - 4 Scenes</title>
+  <title>Render Studio - GLSL Techniques</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { background: #000; overflow: hidden; font-family: 'Segoe UI', sans-serif; }
@@ -26,6 +26,27 @@
       color: rgba(255,255,255,0.6); font-size: 12px;
       text-shadow: 0 1px 3px rgba(0,0,0,0.8);
     }
+    #tech {
+      position: fixed; bottom: 16px; right: 16px; z-index: 10;
+      background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 10px; padding: 14px 18px;
+      backdrop-filter: blur(6px);
+      color: rgba(255,255,255,0.85); font-size: 12px;
+      max-width: 300px; transition: opacity 0.4s;
+    }
+    #tech h3 {
+      font-size: 14px; margin-bottom: 6px; color: #fff;
+      font-weight: 600; letter-spacing: 0.5px;
+    }
+    #tech ul {
+      list-style: none; padding: 0; margin: 0;
+    }
+    #tech li {
+      padding: 3px 0; color: rgba(255,255,255,0.7);
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    #tech li:last-child { border-bottom: none; }
+    #tech li strong { color: rgba(180,220,255,0.9); font-weight: 500; }
   </style>
 </head>
 <body>
@@ -34,8 +55,13 @@
     <button data-scene="1">Desert</button>
     <button data-scene="2">Nebula</button>
     <button data-scene="3">Forest</button>
+    <button data-scene="4">Earth-Moon-Sun</button>
   </div>
   <div id="info">Click to interact</div>
+  <div id="tech">
+    <h3 id="tech-title"></h3>
+    <ul id="tech-list"></ul>
+  </div>
 
   <script type="importmap">
   { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js" } }
@@ -50,6 +76,54 @@ void main() {
   v_uv = position * 0.5 + 0.5;
   gl_Position = vec4(position, 0.0, 1.0);
 }`;
+
+const sceneInfo = [
+  {
+    title: 'Pool',
+    tech: [
+      ['Voronoi', '近隣セルの距離で模様生成 → クォーセレスントパターン'],
+      ['Caustics', 'Voronoiエッジの逆数で光の集束表現'],
+      ['FBM', 'octave重ね合わせで水面揺らぎ'],
+      ['Ripple', 'マウス位置からの波紋伝播 (sin + exp減衰)'],
+    ]
+  },
+  {
+    title: 'Desert',
+    tech: [
+      ['SDF', 'Smooth Unionでサボテン形状を距離関数で表現'],
+      ['Day/Night', 'sin波で空・砂・星の色を補間'],
+      ['FBM', '砂丘のテクスチャ生成'],
+      ['Growth Animation', 'smoothstepで時間経過とともにサボテン成長'],
+    ]
+  },
+  {
+    title: 'Nebula',
+    tech: [
+      ['FBM (7 octave)', '複数レイヤのノイズで星雲の密度場'],
+      ['Domain Warping', 'FBM出力を座標にフィードバック → 有機的な歪み'],
+      ['Voronoi', '2次最近接距離で分子雲の構造'],
+      ['Starfield', 'ハッシュで200個の恒星を配置 + twinkle'],
+    ]
+  },
+  {
+    title: 'Forest',
+    tech: [
+      ['SDF (tree)', '楕円と矩形の組み合わせで木の距離関数'],
+      ['Light Rays', '角度別レイキャストで木漏れ日表現'],
+      ['Particles', 'ループ30個の浮遊粒子 → sparkle'],
+      ['Depth Layering', 'hashで8段階の奥行きを生成'],
+    ]
+  },
+  {
+    title: 'Earth-Moon-Sun',
+    tech: [
+      ['Ray-Sphere', '二次方程式で球体交差判定 (ro, rd, center, radius)'],
+      ['Phong Shading', 'Ambient + Diffuse + Specular の3成分ライティング'],
+      ['Shadow Ray', '光源方向にレイを飛ばし遮蔽判定'],
+      ['Orbital Motion', 'sin/cosで地球・月の軌道を周期運動'],
+    ]
+  }
+];
 
 const scenes = [
   // ========== SCENE 0: POOL ==========
@@ -479,6 +553,165 @@ void main() {
   col = pow(col, vec3(0.4545));
 
   fragColor = vec4(col, 1.0);
+}`,
+
+  // ========== SCENE 4: EARTH-MOON-SUN ==========
+  `#version 300 es
+precision highp float;
+uniform float u_time;
+uniform vec2 u_resolution;
+uniform vec2 u_mouse;
+in vec2 v_uv;
+out vec4 fragColor;
+
+float hash(vec2 p) {
+  return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
+
+float noise(vec2 p) {
+  vec2 i = floor(p);
+  vec2 f = fract(p);
+  f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(hash(i), hash(i + vec2(1,0)), f.x),
+             mix(hash(i + vec2(0,1)), hash(i + vec2(1,1)), f.x), f.y);
+}
+
+float fbm(vec2 p) {
+  float v = 0.0, a = 0.5;
+  mat2 rot = mat2(0.8, 0.6, -0.6, 0.8);
+  for (int i = 0; i < 6; i++) { v += a * noise(p); p = rot * p * 2.1; a *= 0.5; }
+  return v;
+}
+
+vec3 g_sunPos = vec3(4.0, 2.0, -3.0);
+vec3 g_moonPos;
+
+float sdSphere(vec3 p, float r) { return length(p) - r; }
+
+float mapScene(vec3 p) {
+  float sun  = sdSphere(p - g_sunPos, 0.5);
+  float earth = sdSphere(p, 0.3);
+  float moon  = sdSphere(p - g_moonPos, 0.08);
+  return min(min(sun, earth), moon);
+}
+
+struct Hit { float t; vec3 normal; vec3 pos; int obj; };
+
+Hit castRay(vec3 ro, vec3 rd) {
+  Hit h; h.t = -1.0; h.obj = -1;
+  float t = 0.01;
+  for (int i = 0; i < 120; i++) {
+    vec3 p = ro + rd * t;
+    float d = mapScene(p);
+    if (d < 0.0003) break;
+    t += d;
+    if (t > 30.0) return h;
+  }
+  h.t = t;
+  h.pos = ro + rd * t;
+  float e = 0.0005;
+  h.normal = normalize(vec3(
+    mapScene(h.pos + vec3(e,0,0)) - mapScene(h.pos - vec3(e,0,0)),
+    mapScene(h.pos + vec3(0,e,0)) - mapScene(h.pos - vec3(0,e,0)),
+    mapScene(h.pos + vec3(0,0,e)) - mapScene(h.pos - vec3(0,0,e))
+  ));
+
+  vec3 p = h.pos;
+  float ds = sdSphere(p - g_sunPos, 0.5);
+  float de = sdSphere(p, 0.3);
+  float dm = sdSphere(p - g_moonPos, 0.08);
+  if (ds < de && ds < dm) h.obj = 2;
+  else if (de < dm) h.obj = 0;
+  else h.obj = 1;
+  return h;
+}
+
+float softShadow(vec3 ro, vec3 rd) {
+  float res = 1.0;
+  float t = 0.05;
+  for (int i = 0; i < 48; i++) {
+    float d = mapScene(ro + rd * t);
+    if (d < 0.0002) return 0.05;
+    res = min(res, 10.0 * d / t);
+    t += clamp(d, 0.02, 0.3);
+    if (t > 8.0) break;
+  }
+  return clamp(res, 0.0, 1.0);
+}
+
+vec3 shade(Hit h) {
+  vec3 sunColor = vec3(1.0, 0.95, 0.8);
+
+  if (h.obj < 0) {
+    float stars = step(0.9997, hash(floor(v_uv * 600.0)));
+    return mix(vec3(0.0, 0.0, 0.02), vec3(0.8), stars);
+  }
+
+  vec3 N = h.normal;
+  vec3 L = normalize(g_sunPos - h.pos);
+  vec3 V = normalize(-L);
+  vec3 R = reflect(L, N);
+  float shadow = softShadow(h.pos + N * 0.002, L);
+  float diff = max(dot(N, L), 0.0);
+  float spec = pow(max(dot(V, R), 0.0), 64.0);
+  float amb = 0.04;
+
+  vec3 baseColor;
+  if (h.obj == 0) {
+    float lon = atan(N.z, N.x);
+    float lat = asin(N.y);
+    vec2 uv = vec2(lon / 3.14159 * 0.5 + 0.5, lat / 3.14159 + 0.5);
+    float land = fbm(uv * 5.0 + 1.5);
+    float isLand = smoothstep(0.48, 0.52, land);
+    vec3 ocean = vec3(0.04, 0.15, 0.45);
+    vec3 grass = vec3(0.08, 0.38, 0.12);
+    vec3 desert = vec3(0.65, 0.52, 0.32);
+    vec3 biome = mix(ocean, mix(grass, desert, smoothstep(0.56, 0.66, land)), isLand);
+    vec3 cloud = vec3(1.0) * smoothstep(0.55, 0.7, fbm(uv * 3.5 + 5.0)) * 0.35;
+    vec3 ice = vec3(0.85, 0.9, 0.95) * smoothstep(0.45, 0.5, abs(lat));
+    baseColor = biome + cloud;
+    baseColor = mix(baseColor, ice, smoothstep(0.42, 0.5, abs(lat)));
+  } else if (h.obj == 1) {
+    float lon = atan(N.z, N.x);
+    float lat = asin(N.y);
+    float crater = fbm(vec2(lon, lat) * 4.0 + 10.0);
+    float craterShape = smoothstep(0.4, 0.55, crater);
+    vec3 moonBase = vec3(0.6, 0.58, 0.55);
+    baseColor = moonBase - vec3(0.1) * craterShape;
+  } else {
+    baseColor = vec3(1.0, 0.92, 0.6);
+    float flare = fbm(atan(N.z, N.x) * 4.0 + u_time * 0.3);
+    baseColor += vec3(0.15, 0.08, 0.0) * flare;
+  }
+
+  vec3 col = baseColor * (amb + diff * shadow * 0.85) + sunColor * spec * shadow * 0.25;
+  col += baseColor * amb * vec3(0.1, 0.12, 0.25);
+  return col;
+}
+
+void main() {
+  vec2 uv = (gl_FragCoord.xy * 2.0 - u_resolution) / min(u_resolution.x, u_resolution.y);
+  float t = u_time;
+
+  float moonOrbit = t * 0.8;
+  g_moonPos = vec3(cos(moonOrbit) * 0.7, sin(moonOrbit * 0.4) * 0.12, sin(moonOrbit) * 0.7);
+
+  vec3 ro = vec3(0.0, 0.35, 2.0);
+  vec3 lookAt = vec3(0.0, 0.0, 0.0);
+  vec3 forward = normalize(lookAt - ro);
+  vec3 right = normalize(cross(forward, vec3(0.0, 1.0, 0.0)));
+  vec3 up = cross(right, forward);
+  vec3 rd = normalize(forward + uv.x * right + uv.y * up);
+
+  Hit h = castRay(ro, rd);
+  vec3 col = shade(h);
+
+  float sunDist = length(uv - vec2(0.6, -0.3));
+  col += vec3(1.0, 0.95, 0.8) * 0.015 / max(sunDist * sunDist, 0.005);
+
+  col = col / (col + vec3(1.0));
+  col = pow(col, vec3(0.4545));
+  fragColor = vec4(col, 1.0);
 }`
 ];
 
@@ -509,6 +742,18 @@ const scene = new THREE.Scene();
 scene.add(mesh);
 const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
 
+const techTitle = document.getElementById('tech-title');
+const techList = document.getElementById('tech-list');
+
+function updateTech(idx) {
+  const info = sceneInfo[idx];
+  techTitle.textContent = info.title;
+  techList.innerHTML = info.tech.map(([name, desc]) =>
+    '<li><strong>' + name + '</strong> — ' + desc + '</li>'
+  ).join('');
+}
+updateTech(0);
+
 document.querySelectorAll('#nav button').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('#nav button').forEach(b => b.classList.remove('active'));
@@ -516,6 +761,7 @@ document.querySelectorAll('#nav button').forEach(btn => {
     currentScene = parseInt(btn.dataset.scene);
     mat.fragmentShader = scenes[currentScene];
     mat.needsUpdate = true;
+    updateTech(currentScene);
   });
 });
 
