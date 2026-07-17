@@ -674,7 +674,7 @@ vec3 shade(Hit h) {
     baseColor = moonBase - vec3(0.1) * craterShape;
   } else {
     baseColor = vec3(1.0, 0.92, 0.6);
-    float flare = fbm(atan(N.z, N.x) * 4.0 + u_time * 0.3);
+    float flare = fbm(vec2(atan(N.z, N.x) * 4.0, u_time * 0.3));
     baseColor += vec3(0.15, 0.08, 0.0) * flare;
   }
 
