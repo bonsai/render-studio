@@ -1,0 +1,29 @@
+{
+  "pipeline": "forward",
+  "fragmentShader": "phong",
+  "materials": {
+    "diffuse": { "color": [0.8, 0.2, 0.2], "roughness": 0.9 },
+    "specular": { "color": [1.0, 1.0, 1.0], "roughness": 0.1, "metallic": 0.9 },
+    "glass": { "ior": 1.5, "transmission": 0.9 },
+    "emissive": { "color": [1.0, 0.8, 0.2], "intensity": 2.0 }
+  },
+  "lighting": {
+    "type": "point",
+    "position": [3.0, 4.0, 2.0],
+    "color": [1.0, 1.0, 1.0],
+    "intensity": 1.0,
+    "shadows": true,
+    "shadowSoftness": 0.5
+  },
+  "postProcessing": {
+    "toneMapping": "aces",
+    "exposure": 1.0,
+    "bloom": { "enabled": false, "intensity": 0.3 },
+    "ambientOcclusion": { "enabled": false, "radius": 0.5 }
+  },
+  "rayTracing": {
+    "maxBounces": 8,
+    "samplesPerPixel": 1,
+    "denoising": false
+  }
+}
