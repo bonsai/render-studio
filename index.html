@@ -9,11 +9,61 @@
 <body>
   <div id="app">
     <nav id="topnav">
-      <span class="logo" id="app-title">Render Studio</span>
-      <a href="index.html" class="active">Shaders</a>
-      <a href="scenes.html">Scenes</a>
-      <a href="raytracer.html">Ray Tracer</a>
-      <a href="egg.html">WebGPU Egg</a>
+      <span class="logo">Render Studio</span>
+
+      <div class="nav-group active">
+        <span class="nav-label">2D</span>
+        <div class="dropdown">
+          <div class="dd-section">Pattern</div>
+          <a href="index.html?shader=checker">Checker</a>
+          <a href="index.html?shader=circles">Circles</a>
+          <a href="index.html?shader=grid">Grid</a>
+          <a href="index.html?shader=diamond">Diamond</a>
+          <div class="dd-divider"></div>
+          <div class="dd-section">Noise</div>
+          <a href="index.html?shader=valueNoise">Value Noise</a>
+          <a href="index.html?shader=gradientNoise">Gradient Noise</a>
+          <a href="index.html?shader=fbm">FBM</a>
+          <a href="index.html?shader=voronoi">Voronoi</a>
+          <div class="dd-divider"></div>
+          <div class="dd-section">SDF</div>
+          <a href="index.html?shader=sdfCircle">SDF Circle</a>
+          <a href="index.html?shader=sdfBox">SDF Box</a>
+          <a href="index.html?shader=sdfBlend">SDF Blend</a>
+          <div class="dd-divider"></div>
+          <div class="dd-section">Ray Tracing</div>
+          <a href="index.html?shader=basicRT">Basic RT</a>
+          <a href="index.html?shader=pathTracing">Path Tracing</a>
+          <a href="index.html?shader=glass">Glass</a>
+          <div class="dd-divider"></div>
+          <div class="dd-section">Effects</div>
+          <a href="index.html?shader=glow">Glow</a>
+          <a href="index.html?shader=distortion">Distortion</a>
+          <a href="index.html?shader=kira">Kira Kira</a>
+          <a href="index.html?shader=poolWater">Pool Water</a>
+        </div>
+      </div>
+
+      <div class="nav-group">
+        <span class="nav-label">3D Scenes</span>
+        <div class="dropdown">
+          <a href="scenes.html?scene=0">Pool</a>
+          <a href="scenes.html?scene=1">Desert</a>
+          <a href="scenes.html?scene=2">Nebula</a>
+          <a href="scenes.html?scene=3">Forest</a>
+          <a href="scenes.html?scene=4">Earth-Moon-Sun</a>
+          <a href="scenes.html?scene=5">Fractal</a>
+          <a href="scenes.html?scene=6">Clouds</a>
+        </div>
+      </div>
+
+      <div class="nav-group">
+        <span class="nav-label">Tools</span>
+        <div class="dropdown">
+          <a href="raytracer.html">Ray Tracer</a>
+          <a href="egg.html">WebGPU Egg</a>
+        </div>
+      </div>
     </nav>
     <div id="workspace">
       <div id="sidebar">
@@ -139,6 +189,13 @@
     });
 
     if (firstBtn) firstBtn.click();
+
+    const urlShader = new URLSearchParams(location.search).get('shader');
+    if (urlShader && implData[urlShader]) {
+      const btn = sidebar.querySelector(`[data-shader="${urlShader}"]`);
+      if (btn) { btn.click(); } else { loadShader(urlShader); }
+    }
+
     render();
   </script>
 </body>
