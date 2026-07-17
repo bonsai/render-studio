@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Render Studio - 4 Scenes</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #000; overflow: hidden; font-family: 'Segoe UI', sans-serif; }
+    canvas { display: block; width: 100vw; height: 100vh; }
+    #nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 10;
+      display: flex; gap: 4px; padding: 12px;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.7), transparent);
+    }
+    #nav button {
+      padding: 8px 18px; border: 1px solid rgba(255,255,255,0.2);
+      background: rgba(0,0,0,0.4); color: #fff; border-radius: 20px;
+      cursor: pointer; font-size: 13px; transition: all 0.3s;
+      backdrop-filter: blur(4px);
+    }
+    #nav button:hover { background: rgba(255,255,255,0.15); }
+    #nav button.active { background: rgba(255,255,255,0.25); border-color: rgba(255,255,255,0.5); }
+    #info {
+      position: fixed; bottom: 16px; left: 16px; z-index: 10;
+      color: rgba(255,255,255,0.6); font-size: 12px;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+    }
+  </style>
+</head>
+<body>
+  <div id="nav">
+    <button class="active" data-scene="0">Pool</button>
+    <button data-scene="1">Desert</button>
+    <button data-scene="2">Nebula</button>
+    <button data-scene="3">Forest</button>
+  </div>
+  <div id="info">Click to interact</div>
+
+  <script type="importmap">
+  { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js" } }
+  </script>
+  <script type="module">
+import * as THREE from 'three';
+
+const vertexShader = `#version 300 es
+in vec2 position;
+out vec2 v_uv;
+void main() {
+  v_uv = position * 0.5 + 0.5;
+  gl_Position = vec4(position, 0.0, 1.0);
+}`;
+
+const scenes = [
+  // ========== SCENE 0: POOL ==========
+  `#version 300 es
+precision highp float;
+uniform float u_time;
+uniform vec2 u_resolution;
+uniform vec2 u_mouse;
+in vec2 v_uv;
+out vec4 fragColor;
+
+vec2 random2(vec2 p) {
+  return fract(sin(vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)))) * 43758.5453);
+}
+
+float voronoi(vec2 st, float time) {
+  vec2 i_st = floor(st);
+  vec2 f_st = fract(st);
+  float min_dist = 10.0;
+  for (int y = -1; y <= 1; y++) {
+    for (int x = -1; x <= 1; x++) {
+      vec2 neighbor = vec2(float(x), float(y));
+      vec2 point = random2(i_st + neighbor);
+      point = 0.5 + 0.5 * sin(time + 6.2831 * point);
+      float d = length(neighbor + point - f_st);
+      min_dist = min(min_dist, d);
+    }
+  }
+  return min_dist;
+}
+
+float hash(vec2 p) {
+  return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
+
+float noise(vec2 p) {
+  vec2 i = floor(p);
+  vec2 f = fract(p);
+  f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(hash(i), hash(i + vec2(1,0)), f.x),
+             mix(hash(i + vec2(0,1)), hash(i + vec2(1,1)), f.x), f.y);
+}
+
+float fbm(vec2 p) {
+  float v = 0.0, a = 0.5;
+  mat2 rot = mat2(cos(0.5), sin(0.5), -sin(0.5), cos(0.5));
+  for (int i = 0; i < 5; i++) {
+    v += a * noise(p);
+    p = rot * p * 2.0;
+    a *= 0.5;
+  }
+  return v;
+}
+
+void main() {
+  vec2 p = (gl_FragCoord.xy * 2.0 - u_resolution) / min(u_resolution.x, u_resolution.y);
+  float t = u_time;
+  vec2 mouse = (u_mouse * 2.0 - u_resolution) / min(u_resolution.x, u_resolution.y);
+
+  vec2 uv = p * 4.0;
+  uv.x += 0.3 * sin(uv.y * 2.0 + t * 0.8);
+  uv.y += 0.2 * cos(uv.x * 3.0 + t * 0.6);
+
+  float v1 = voronoi(uv * 1.0, t * 0.5);
+  float v2 = voronoi(uv * 2.0 + 3.7, t * 0.7 + 10.0);
+  float v3 = voronoi(uv * 4.0 + 7.3, t * 0.3 + 20.0);
+
+  float caustic1 = 0.02 / max(abs(v1 - 0.15), 0.005);
+  float caustic2 = 0.015 / max(abs(v2 - 0.12), 0.005);
+  float caustic3 = 0.01 / max(abs(v3 - 0.10), 0.005);
+  float caustics = caustic1 + caustic2 * 0.6 + caustic3 * 0.3;
+
+  float depth = 0.5 + 0.5 * p.y;
+  vec3 deepColor = vec3(0.02, 0.08, 0.25);
+  vec3 shallowColor = vec3(0.1, 0.4, 0.6);
+  vec3 poolBase = mix(deepColor, shallowColor, depth * 0.6);
+
+  float edge = 1.0 - smoothstep(0.0, 1.5, length(p));
+  vec3 surfaceHighlight = vec3(0.4, 0.7, 0.9) * edge * 0.3;
+
+  vec3 col = poolBase;
+  col += vec3(0.3, 0.6, 0.8) * caustics * 0.15;
+  col += surfaceHighlight;
+
+  float shimmer = sin(p.x * 15.0 + t) * sin(p.y * 12.0 + t * 0.7);
+  col += vec3(0.05, 0.1, 0.15) * shimmer * 0.3;
+
+  float ripples = length(p - mouse * 0.5);
+  float ripple = sin(ripples * 20.0 - t * 3.0) * exp(-ripples * 3.0) * 0.3;
+  col += vec3(0.2, 0.5, 0.7) * ripple;
+
+  float surface = fbm(uv * 0.5 + t * 0.1);
+  col += vec3(0.1, 0.2, 0.3) * surface * 0.2;
+
+  col = col / (col + vec3(1.0));
+  fragColor = vec4(col, 1.0);
+}`,
+
+  // ========== SCENE 1: DESERT ==========
+  `#version 300 es
+precision highp float;
+uniform float u_time;
+uniform vec2 u_resolution;
+uniform vec2 u_mouse;
+in vec2 v_uv;
+out vec4 fragColor;
+
+float hash(vec2 p) {
+  return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
+
+float noise(vec2 p) {
+  vec2 i = floor(p);
+  vec2 f = fract(p);
+  f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(hash(i), hash(i + vec2(1,0)), f.x),
+             mix(hash(i + vec2(0,1)), hash(i + vec2(1,1)), f.x), f.y);
+}
+
+float fbm(vec2 p) {
+  float v = 0.0, a = 0.5;
+  mat2 rot = mat2(cos(0.5), sin(0.5), -sin(0.5), cos(0.5));
+  for (int i = 0; i < 6; i++) {
+    v += a * noise(p);
+    p = rot * p * 2.0;
+    a *= 0.5;
+  }
+  return v;
+}
+
+float sdCactus(vec2 p, float h, float arm1, float arm2) {
+  float body = length(p - vec2(0.0, h * 0.5)) - 0.08;
+  body = max(body, -(p.y - h));
+  body = max(body, -p.y);
+
+  float a1 = length(p - vec2(-0.12, h * 0.6 * arm1)) - 0.05;
+  a1 = max(a1, -(abs(p.x + 0.12) - 0.12));
+  a1 = max(a1, -(abs(p.y - h * 0.6 * arm1) - 0.06));
+
+  float a2 = length(p - vec2(0.12, h * 0.4 * arm2)) - 0.05;
+  a2 = max(a2, -(abs(p.x - 0.12) - 0.12));
+  a2 = max(a2, -(abs(p.y - h * 0.4 * arm2) - 0.06));
+
+  return min(body, min(a1, a2));
+}
+
+void main() {
+  vec2 p = (gl_FragCoord.xy * 2.0 - u_resolution) / min(u_resolution.x, u_resolution.y);
+  float t = u_time;
+
+  float dayNight = sin(t * 0.1) * 0.5 + 0.5;
+
+  vec3 skyDay = mix(vec3(0.4, 0.6, 0.9), vec3(1.0, 0.85, 0.6), smoothstep(0.3, 0.7, p.y));
+  vec3 skyNight = mix(vec3(0.02, 0.02, 0.08), vec3(0.05, 0.05, 0.15), smoothstep(-0.2, 0.8, p.y));
+  vec3 sky = mix(skyNight, skyDay, dayNight);
+
+  float stars = step(0.998, hash(floor(p * 200.0)));
+  stars *= (1.0 - dayNight);
+  sky += vec3(stars) * 0.8;
+
+  float sunAngle = t * 0.1;
+  vec2 sunPos = vec2(cos(sunAngle) * 2.0, sin(sunAngle) * 1.5 - 0.2);
+  float sun = 1.0 - smoothstep(0.02, 0.06, length(p - sunPos));
+  float sunGlow = 0.1 / max(length(p - sunPos), 0.05);
+  sky += vec3(1.0, 0.9, 0.6) * sun * dayNight;
+  sky += vec3(0.8, 0.4, 0.2) * sunGlow * 0.1 * dayNight;
+
+  float ground = step(-0.3, p.y);
+  float sand = fbm(p * 8.0 + vec2(t * 0.02, 0.0));
+  vec3 sandColor = mix(vec3(0.76, 0.6, 0.42), vec3(0.9, 0.75, 0.5), sand);
+  sandColor *= mix(0.3, 1.0, dayNight);
+
+  vec3 col = mix(sky, sandColor, ground);
+
+  vec2 cactusPos = vec2(0.2, -0.3);
+  float growth = smoothstep(0.0, 20.0, t);
+  float cactusH = 0.3 + 0.3 * growth;
+  float arm1 = smoothstep(5.0, 15.0, t);
+  float arm2 = smoothstep(10.0, 20.0, t);
+  float cactus = sdCactus(p - cactusPos, cactusH, arm1, arm2);
+
+  if (cactus < 0.0) {
+    vec3 cactusGreen = vec3(0.15, 0.45, 0.15);
+    vec3 cactusDark = vec3(0.08, 0.25, 0.08);
+    float stripes = sin(p.y * 60.0) * 0.5 + 0.5;
+    col = mix(cactusDark, cactusGreen, stripes * 0.3 + 0.7);
+    col *= mix(0.3, 1.0, dayNight);
+  }
+
+  float cactusShadow = smoothstep(0.02, 0.0, cactus);
+  col *= 1.0 - cactusShadow * 0.3;
+
+  float haze = smoothstep(-0.3, -0.1, p.y) * 0.15;
+  col = mix(col, vec3(0.9, 0.8, 0.6), haze * dayNight);
+
+  col = pow(col, vec3(0.4545));
+  fragColor = vec4(col, 1.0);
+}`,
+
+  // ========== SCENE 2: NEBULA ==========
+  `#version 300 es
+precision highp float;
+uniform float u_time;
+uniform vec2 u_resolution;
+uniform vec2 u_mouse;
+in vec2 v_uv;
+out vec4 fragColor;
+
+float hash(vec2 p) {
+  return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
+
+float hash3(vec3 p) {
+  return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453);
+}
+
+float noise(vec2 p) {
+  vec2 i = floor(p);
+  vec2 f = fract(p);
+  f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(hash(i), hash(i + vec2(1,0)), f.x),
+             mix(hash(i + vec2(0,1)), hash(i + vec2(1,1)), f.x), f.y);
+}
+
+float fbm(vec2 p) {
+  float v = 0.0, a = 0.5;
+  mat2 rot = mat2(cos(0.59), sin(0.59), -sin(0.59), cos(0.59));
+  for (int i = 0; i < 7; i++) {
+    v += a * noise(p);
+    p = rot * p * 2.1;
+    a *= 0.5;
+  }
+  return v;
+}
+
+vec2 random2(vec2 p) {
+  return fract(sin(vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)))) * 43758.5453);
+}
+
+float voronoi(vec2 st, float time) {
+  vec2 i_st = floor(st);
+  vec2 f_st = fract(st);
+  float min_dist = 10.0;
+  float second_dist = 10.0;
+  for (int y = -1; y <= 1; y++) {
+    for (int x = -1; x <= 1; x++) {
+      vec2 neighbor = vec2(float(x), float(y));
+      vec2 point = random2(i_st + neighbor);
+      point = 0.5 + 0.5 * sin(time + 6.2831 * point);
+      float d = length(neighbor + point - f_st);
+      if (d < min_dist) {
+        second_dist = min_dist;
+        min_dist = d;
+      } else if (d < second_dist) {
+        second_dist = d;
+      }
+    }
+  }
+  return second_dist - min_dist;
+}
+
+void main() {
+  vec2 p = (gl_FragCoord.xy * 2.0 - u_resolution) / min(u_resolution.x, u_resolution.y);
+  float t = u_time * 0.05;
+
+  vec3 col = vec3(0.0);
+
+  float n1 = fbm(p * 2.0 + t * 0.3);
+  float n2 = fbm(p * 4.0 - t * 0.2 + 5.0);
+  float n3 = fbm(p * 1.5 + vec2(n1, n2) * 1.5 + t * 0.1);
+
+  vec3 nebula1 = vec3(0.4, 0.1, 0.6) * smoothstep(0.3, 0.8, n1);
+  vec3 nebula2 = vec3(0.1, 0.3, 0.7) * smoothstep(0.4, 0.9, n2);
+  vec3 nebula3 = vec3(0.6, 0.15, 0.3) * smoothstep(0.35, 0.85, n3);
+
+  col += nebula1 * 0.4;
+  col += nebula2 * 0.3;
+  col += nebula3 * 0.25;
+
+  float v = voronoi(p * 8.0 + t * 0.5, t);
+  col += vec3(0.15, 0.3, 0.5) * smoothstep(0.0, 0.15, v) * 0.2;
+
+  float dust = fbm(p * 6.0 + t * 0.15 + 10.0);
+  col += vec3(0.08, 0.04, 0.12) * dust * 0.5;
+
+  for (int i = 0; i < 200; i++) {
+    vec2 starPos = hash2(vec2(float(i), floor(float(i) / 100.0))) * 2.0 - 1.0;
+    float brightness = hash(vec2(float(i), float(i) + 100.0));
+    float size = 0.001 + brightness * 0.003;
+    float twinkle = 0.5 + 0.5 * sin(t * 50.0 + float(i) * 7.0);
+    float star = smoothstep(size, 0.0, length(p - starPos));
+    vec3 starColor = mix(vec3(0.8, 0.9, 1.0), vec3(1.0, 0.8, 0.6), hash(vec2(float(i), 0.0)));
+    col += starColor * star * brightness * twinkle;
+  }
+
+  float core = fbm(p * 3.0 + t * 0.2 + 20.0);
+  float coreBright = smoothstep(0.55, 0.8, core);
+  col += vec3(0.8, 0.5, 0.9) * coreBright * 0.4;
+
+  col = col / (col + vec3(1.0));
+  col = pow(col, vec3(0.4545));
+
+  fragColor = vec4(col, 1.0);
+}
+
+vec2 hash2(vec2 p) {
+  return fract(sin(vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)))) * 43758.5453);
+}`,
+
+  // ========== SCENE 3: FOREST ==========
+  `#version 300 es
+precision highp float;
+uniform float u_time;
+uniform vec2 u_resolution;
+uniform vec2 u_mouse;
+in vec2 v_uv;
+out vec4 fragColor;
+
+float hash(vec2 p) {
+  return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
+
+float noise(vec2 p) {
+  vec2 i = floor(p);
+  vec2 f = fract(p);
+  f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(hash(i), hash(i + vec2(1,0)), f.x),
+             mix(hash(i + vec2(0,1)), hash(i + vec2(1,1)), f.x), f.y);
+}
+
+float fbm(vec2 p) {
+  float v = 0.0, a = 0.5;
+  mat2 rot = mat2(cos(0.59), sin(0.59), -sin(0.59), cos(0.59));
+  for (int i = 0; i < 6; i++) {
+    v += a * noise(p);
+    p = rot * p * 2.0;
+    a *= 0.5;
+  }
+  return v;
+}
+
+float sdTree(vec2 p, float h, float sway) {
+  float trunk = abs(p.x - sway * 0.02 * p.y) - 0.015 - 0.005 * p.y;
+  trunk = max(trunk, -(p.y - h * 0.6));
+
+  float crown = length((p - vec2(sway * 0.04, h * 0.75)) * vec2(1.0, 0.7)) - h * 0.3;
+  crown = min(crown, length((p - vec2(sway * 0.03, h * 0.9)) * vec2(1.0, 0.6)) - h * 0.2);
+
+  return min(trunk, crown);
+}
+
+void main() {
+  vec2 p = (gl_FragCoord.xy * 2.0 - u_resolution) / min(u_resolution.x, u_resolution.y);
+  float t = u_time;
+
+  vec2 uv = p;
+
+  vec3 col = vec3(0.0);
+
+  float fog = fbm(p * 2.0 + t * 0.05);
+  vec3 fogColor = mix(vec3(0.15, 0.2, 0.1), vec3(0.25, 0.35, 0.2), fog);
+  col = fogColor;
+
+  vec3 skyColor = mix(vec3(0.1, 0.15, 0.05), vec3(0.3, 0.45, 0.2), smoothstep(-0.2, 0.5, p.y));
+  col = mix(fogColor * 0.5, skyColor, smoothstep(-0.1, 0.8, p.y) * 0.3);
+
+  float ground = 1.0 - smoothstep(-0.5, -0.3, p.y);
+  vec3 groundColor = mix(vec3(0.08, 0.12, 0.04), vec3(0.15, 0.2, 0.08), noise(p * 20.0));
+  float moss = fbm(p * 15.0 + 5.0);
+  groundColor += vec3(0.05, 0.08, 0.02) * moss;
+  col = mix(col, groundColor, ground);
+
+  float sway = sin(t * 0.8);
+
+  for (int i = 0; i < 8; i++) {
+    float fi = float(i);
+    float x = (hash(vec2(fi, 1.0)) - 0.5) * 2.5;
+    float depth = 0.3 + hash(vec2(fi, 2.0)) * 0.7;
+    float h = 0.4 + hash(vec2(fi, 3.0)) * 0.4;
+    float treeSway = sin(t * 0.5 + fi * 1.3) * 0.3;
+
+    vec2 tp = (p - vec2(x * depth, -0.3)) / depth;
+    float tree = sdTree(tp, h, treeSway);
+
+    vec3 trunkColor = vec3(0.25, 0.15, 0.08);
+    vec3 leafColor = mix(vec3(0.05, 0.2, 0.05), vec3(0.15, 0.35, 0.08), hash(vec2(fi, 4.0)));
+    float leafNoise = fbm(tp * 8.0 + fi);
+    leafColor += vec3(0.05, 0.1, 0.02) * leafNoise;
+
+    if (tree < 0.0) {
+      float t2 = abs(tp.x) < 0.02 ? 1.0 : 0.0;
+      vec3 treeCol = mix(leafColor, trunkColor, step(0.5, tp.y / h));
+      treeCol *= mix(0.3, 1.0, depth);
+      col = treeCol;
+    }
+  }
+
+  float lightRays = 0.0;
+  for (int i = 0; i < 5; i++) {
+    float fi = float(i);
+    float angle = 0.3 + fi * 0.15;
+    float ray = abs(p.x - p.y * cos(angle) * 0.3 - hash(vec2(fi, 5.0)) * 0.5);
+    float brightness = 0.02 / max(ray, 0.005);
+    float flicker = 0.7 + 0.3 * sin(t * 0.3 + fi * 2.0);
+    lightRays += brightness * flicker * 0.05;
+  }
+  col += vec3(0.3, 0.4, 0.2) * lightRays * smoothstep(-0.5, 0.3, p.y);
+
+  float particles = 0.0;
+  for (int i = 0; i < 30; i++) {
+    float fi = float(i);
+    vec2 particlePos = vec2(
+      sin(t * 0.2 + fi * 0.7) * 0.8 + hash(vec2(fi, 6.0)) * 0.4 - 0.2,
+      fract(t * 0.05 + hash(vec2(fi, 7.0))) * 1.2 - 0.4
+    );
+    float d = length(p - particlePos);
+    float sparkle = 0.003 / max(d, 0.001);
+    particles += sparkle * 0.01;
+  }
+  col += vec3(0.5, 0.6, 0.3) * particles;
+
+  float groundFog = smoothstep(-0.3, -0.45, p.y);
+  vec3 groundFogCol = vec3(0.15, 0.2, 0.12) * (0.8 + 0.2 * sin(t * 0.2));
+  col = mix(col, groundFogCol, groundFog * 0.6);
+
+  col = col / (col + vec3(1.0));
+  col = pow(col, vec3(0.4545));
+
+  fragColor = vec4(col, 1.0);
+}`
+];
+
+const renderer = new THREE.WebGLRenderer();
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+document.body.prepend(renderer.domElement);
+
+let currentScene = 0;
+const uniforms = {
+  u_time: { value: 0 },
+  u_resolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
+  u_mouse: { value: new THREE.Vector2(0, 0) }
+};
+
+function createMaterial(fragShader) {
+  return new THREE.ShaderMaterial({
+    vertexShader,
+    fragmentShader: fragShader,
+    uniforms
+  });
+}
+
+const geo = new THREE.PlaneGeometry(2, 2);
+const mat = createMaterial(scenes[0]);
+const mesh = new THREE.Mesh(geo, mat);
+const scene = new THREE.Scene();
+scene.add(mesh);
+const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+
+document.querySelectorAll('#nav button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#nav button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentScene = parseInt(btn.dataset.scene);
+    mat.fragmentShader = scenes[currentScene];
+    mat.needsUpdate = true;
+  });
+});
+
+window.addEventListener('mousemove', e => {
+  uniforms.u_mouse.value.set(e.clientX, window.innerHeight - e.clientY);
+});
+
+window.addEventListener('resize', () => {
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  uniforms.u_resolution.value.set(window.innerWidth, window.innerHeight);
+});
+
+const clock = new THREE.Clock();
+function animate() {
+  uniforms.u_time.value = clock.getElapsedTime();
+  renderer.render(scene, cam);
+  requestAnimationFrame(animate);
+}
+animate();
+  </script>
+</body>
+</html>
